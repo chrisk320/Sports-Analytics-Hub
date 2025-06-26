@@ -1,0 +1,15 @@
+# Dependencies and downloaded binaries
+**/node_modules
+**/.puppeteer-cache
+
+# Environment variables
+# Never commit your database passwords or API keys!
+.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS specific
+.DS_Store
