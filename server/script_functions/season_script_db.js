@@ -1,9 +1,3 @@
-// File: seed-database.js
-// Purpose: A standalone script to scrape NBA stats and load them directly into a PostgreSQL database.
-// To Run:
-// - For specific seasons: node seed-database.js 2021-22 2020-21
-// - For default seasons:  node seed-database.js
-
 import puppeteer from 'puppeteer';
 import pg from 'pg'; // The PostgreSQL client
 
