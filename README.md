@@ -1,81 +1,71 @@
-# NBA Player Performance AI
+# NBA Player Stats Dashboard
 
-This project is a data-driven application designed to analyze NBA player statistics and eventually build a predictive model to help with sports betting decisions on player props (Points, Rebounds, Assists).
+This project is a full-stack application designed to help users analyze NBA player performance. It features a robust backend data pipeline that scrapes historical data from `stats.nba.com` and a dedicated API server to serve that data, providing a foundation for a user-facing stats dashboard.
 
-The core of the project is a powerful data pipeline that extracts historical player performance data directly from `stats.nba.com` and populates a local PostgreSQL database, creating a robust foundation for future AI modeling.
+## Project Architecture
 
----
+This project is built with a professional, separated architecture to handle data collection and data serving as distinct processes.
 
-## Current Features
+### 1. Data Pipeline (`seed-database.js` & `seed-gamelogs.js`)
 
-* **Automated Web Scraper:** Utilizes Puppeteer to launch a headless Chrome browser, enabling it to scrape data from the complex, JavaScript-driven official NBA stats website.
-* **Robust Data Extraction:** The scraper is engineered to handle real-world website challenges, including:
-    * Automatically clicking "Accept Cookies" modals.
-    * Intelligently navigating through all pages of data for a given season using pagination logic.
-    * Detecting and breaking out of infinite loops on the final page.
-* **Direct Database Seeding:** Scraped data is loaded directly into a PostgreSQL database, creating a clean, structured, and permanent data store. The script automatically creates the necessary tables (`players`, `player_season_stats`) if they don't exist.
-* **Flexible Command-Line Interface:** The data seeding script can be run to fetch data for specific seasons provided as arguments, making it a reusable and flexible tool.
+The data pipeline consists of two standalone Node.js scripts that are run offline to populate the database.
 
----
+* **`seed-database.js`**: This script scrapes the main stats pages on `stats.nba.com` to get a list of all players and their season-average stats. It populates the `players` and `player_season_stats` tables.
 
-## How to Use This Project
+* **`seed-gamelogs.js`**: This script reads the list of players from the database, then visits each player's individual "Box Scores" page to scrape their game-by-game statistics for multiple seasons. It is designed to be "resumable," meaning it can be stopped and started without re-scraping data that has already been collected.
 
-### 1. Prerequisites
+Both scripts utilize **Puppeteer** to launch a headless Chrome browser, enabling them to handle dynamic, JavaScript-driven websites, cookie modals, and pagination.
 
-* [Node.js](https://nodejs.org/en/) installed.
-* [PostgreSQL](https://www.postgresql.org/) installed and running.
-* [Homebrew](https://brew.sh/) (on macOS, for managing the PostgreSQL service).
+### 2. Database (PostgreSQL)
 
-### 2. Setup
+A PostgreSQL database serves as the single source of truth for the application. It contains three main tables:
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/chrisk320/nbastats.git](https://github.com/chrisk320/nbastats.git)
-    cd nbastats
-    ```
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Start the PostgreSQL service:**
-    ```bash
-    brew services start postgresql
-    ```
-4.  **Create the database:**
-    ```bash
-    createdb nba_stats
-    ```
-5.  **Configure the database connection:**
-    Open the `seed-database.js` file and update the `Pool` configuration with your PostgreSQL username and password.
+* `players`: Stores a unique record for each player (ID and name).
 
-### 3. Running the Scraper
+* `player_season_stats`: Stores the season averages for each player for every season scraped.
 
-The script can be run from the terminal to populate your database.
+* `player_game_logs`: Stores the detailed, game-by-game stats for each player.
 
-* **To scrape data for a default set of seasons:**
-    ```bash
-    node seed-database.js
-    ```
-* **To scrape data for one or more specific seasons:**
-    ```bash
-    node seed-database.js 2021-22 2020-21 2019-20
-    ```
+### 3. Backend API (`server.js`, Routes & Controllers)
 
----
+An Express.js server provides a clean, RESTful API to access the data stored in the database. It follows a standard MVC (Model-View-Controller) pattern:
+
+* **`server.js`**: The main entry point that starts the server and sets up middleware.
+
+* **`routes/stats.routes.js`**: Defines all the API endpoints related to player data.
+
+* **`controllers/stats.controllers.js`**: Contains the core logic for each endpoint, including the SQL queries needed to fetch data from the PostgreSQL database.
+
+This server is fast and lightweight because it only reads from the pre-populated database and does not perform any scraping itself.
+
+## API Endpoints
+
+The server provides the following endpoints to be consumed by a frontend application:
+
+* **`GET /players`**: Returns a list of all players in the database.
+
+* **`GET /players/:playerId`**: Returns basic information for a single player.
+
+* **`GET /players/:playerId/season-averages`**: Returns all season average stats for a single player.
+
+* **`GET /players/:playerId/gamelogs`**: Returns all game-by-game logs for a single player.
 
 ## Technology Stack
 
-* **Backend:** Node.js
-* **Web Scraping:** Puppeteer
-* **Database:** PostgreSQL
-* **Node.js-Postgres Bridge:** `pg` (node-postgres)
+* **Backend**: Node.js, Express.js
 
----
+* **Database**: PostgreSQL
+
+* **Web Scraping**: Puppeteer
+
+* **Node.js-Postgres Bridge**: `pg` (node-postgres)
 
 ## Next Steps
 
-With the data pipeline now complete and the historical data stored in a reliable database, the next phase of the project is to:
+With the backend data pipeline and API now complete, the next phase of the project is to:
 
-* Build an Express.js API server to serve this data.
-* Develop the first version of the AI prediction model.
-* Backtest the model against historical data to measure its accuracy.
+* Build the frontend user interface using HTML, CSS, and JavaScript.
+
+* Create a search bar that uses the `/players` endpoint for autocomplete.
+
+* Design and implement a player dashboard to display the data fetched from the API.
