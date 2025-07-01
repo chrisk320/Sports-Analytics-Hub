@@ -1,78 +1,72 @@
-import axios from 'axios';
-import puppeteer, { executablePath } from 'puppeteer';
+import pg from 'pg';
 
-export const getAllStats = async (req, res) => {
-    console.log('Request received. Launching Puppeteer to scrape stats...');
-    let browser;
+const { Pool } = pg;
+const pool = new Pool({
+    user: 'christiankim',
+    host: 'localhost',
+    database: 'nba_stats',
+    password: '',
+    port: 5432,
+});
 
+export const getPlayers = async (req, res) => {
+    console.log(`Received request for all players list.`);
     try {
-        console.log('Launching browser...');
-        browser = await puppeteer.launch({
-            headless: "new",
-            executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-        });
+        const query = 'SELECT player_id, full_name FROM players ORDER BY full_name ASC;';
+        const result = await pool.query(query);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error fetchign player list', err.stack);
+    }
+}
 
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
-
-        const season = req.query.season || '2022-23';
-        const url = `https://www.nba.com/stats/players/traditional?Season=${season}&SeasonType=Regular+Season`;
-
-        console.log(`Navigating to ${url}...`);
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        console.log('Page DOM loaded.');
-
-        console.log('Looking for cookie consent button...');
-        const cookieButtonSelector = '#onetrust-accept-btn-handler';
-        try {
-            await page.waitForSelector(cookieButtonSelector, { timeout: 10000 });
-            await page.click(cookieButtonSelector);
-            console.log('Cookie consent button clicked.');
-        } catch (e) {
-            console.log('Cookie consent button not found, continuing...');
+export const getPlayer = async (req, res) => {
+    const { playerId } = req.params;
+    console.log(`Received request for player info for ID: ${playerId}`);
+    try {
+        const query = 'SELECT player_id, full_name FROM players WHERE player_id = $1;';
+        const result = await pool.query(query, [playerId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Player not found' });
         }
-
-        // ** NEW, MORE RELIABLE SELECTOR **
-        // Instead of a fragile class, we wait for a table inside the main content block.
-        console.log('Waiting for the stats table to appear...');
-        const tableSelector = 'section.nba-stats-content-block table';
-        await page.waitForSelector(tableSelector, { timeout: 60000 });
-
-        console.log('Stats table found. Extracting data...');
-
-        const playersData = await page.evaluate((selector) => {
-            const stats = [];
-            // Use the selector passed into the function
-            const tableRows = document.querySelectorAll(`${selector} tbody tr`);
-
-            tableRows.forEach(row => {
-                const columns = row.querySelectorAll('td');
-                if (columns.length > 20) { // Check for sufficient columns
-                    stats.push({
-                        name: columns[1]?.innerText,
-                        team: columns[2]?.innerText,
-                        age: parseInt(columns[3]?.innerText, 10),
-                        gp: parseInt(columns[4]?.innerText, 10),
-                        // ** CORRECTED COLUMN INDICES **
-                        pts: parseFloat(columns[8]?.innerText),  // Was 6
-                        reb: parseFloat(columns[20]?.innerText), // Was 17
-                        ast: parseFloat(columns[21]?.innerText), // Was 18
-                    });
-                }
-            });
-            return stats;
-        }, tableSelector); // Pass the selector into page.evaluate
-
-        console.log(`Successfully extracted data for ${playersData.length} players.`);
-        res.status(200).json(playersData);
-
-    } catch (error) {
-        console.error('An error occurred during scraping:', error);
-        res.status(500).json({ message: "Failed to scrape data.", error: error.message });
-    } finally {
-        if (browser) {
-            await browser.close();
-            console.log('Browser closed.');
-        }
+        res.status(200).json(result.rows[0]);
+    } catch (err) {
+        console.error('Error fetching player info', err.stack);
+        res.status(500).send('Server Error');
     }
 };
+
+export const getSeasonAverages = async (req, res) => {
+    const { playerId } = req.params;
+    console.log(`Received request for season averages for player ID: ${playerId}`);
+    try {
+        const query = `
+            SELECT * FROM player_season_stats 
+            WHERE player_id = $1 
+            ORDER BY season DESC;
+        `;
+        const result = await pool.query(query, [playerId]);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error fetching season averages', err.stack);
+        res.status(500).send('Server Error');
+    }
+}
+
+export const getGameLogs = async (req, res) => {
+    const { playerId } = req.params;
+    console.log(`Received request for game logs for player ID: ${playerId}`);
+
+    try {
+        const query = `
+            SELECT * FROM player_game_logs 
+            WHERE player_id = $1 
+            ORDER BY game_date DESC;
+        `;
+        const result = await pool.query(query, [playerId]);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error executing query for game logs', err.stack);
+        res.status(500).send('Server Error');
+    }
+}
