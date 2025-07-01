@@ -6,15 +6,17 @@ This project is a full-stack application designed to help users analyze NBA play
 
 This project is built with a professional, separated architecture to handle data collection and data serving as distinct processes.
 
-### 1. Data Pipeline (`seed-database.js` & `seed-gamelogs.js`)
+### 1. Data Pipeline (Scraping Scripts)
 
-The data pipeline consists of two standalone Node.js scripts that are run offline to populate the database.
+The data pipeline consists of a set of standalone Node.js scripts that are run offline to populate the database. This modular approach allows for targeted data collection based on different statistical categories.
 
-* **`seed-database.js`**: This script scrapes the main stats pages on `stats.nba.com` to get a list of all players and their season-average stats. It populates the `players` and `player_season_stats` tables.
+* **`top_players_by_pts.js`**: This script first queries the database to get a list of the top 100 players based on their points per game average for a specific season. It then scrapes the detailed, game-by-game logs for each of these players across multiple historical seasons.
 
-* **`seed-gamelogs.js`**: This script reads the list of players from the database, then visits each player's individual "Box Scores" page to scrape their game-by-game statistics for multiple seasons. It is designed to be "resumable," meaning it can be stopped and started without re-scraping data that has already been collected.
+* **`top_players_by_rebs.js`**: Similar to the points script, this fetches the top 100 players based on rebounds per game and scrapes their complete game log history.
 
-Both scripts utilize **Puppeteer** to launch a headless Chrome browser, enabling them to handle dynamic, JavaScript-driven websites, cookie modals, and pagination.
+* **`top_players_by_asts.js`**: Fetches the top 100 players based on assists per game and scrapes their complete game log history.
+
+All scripts utilize **Puppeteer** to launch a headless Chrome browser, enabling them to handle dynamic, JavaScript-driven websites, cookie modals, and pagination. They are also designed to be "resumable," meaning they can be stopped and started without re-scraping data that has already been collected.
 
 ### 2. Database (PostgreSQL)
 
@@ -24,7 +26,7 @@ A PostgreSQL database serves as the single source of truth for the application. 
 
 * `player_season_stats`: Stores the season averages for each player for every season scraped.
 
-* `player_game_logs`: Stores the detailed, game-by-game stats for each player.
+* `player_game_logs`: Stores the detailed, game-by-game stats for each player, including points, rebounds, assists, steals, blocks, and opponent.
 
 ### 3. Backend API (`server.js`, Routes & Controllers)
 
@@ -52,20 +54,16 @@ The server provides the following endpoints to be consumed by a frontend applica
 
 ## Technology Stack
 
+* **Frontend**: React, Tailwind CSS
 * **Backend**: Node.js, Express.js
-
 * **Database**: PostgreSQL
-
 * **Web Scraping**: Puppeteer
-
 * **Node.js-Postgres Bridge**: `pg` (node-postgres)
 
 ## Next Steps
 
 With the backend data pipeline and API now complete, the next phase of the project is to:
 
-* Build the frontend user interface using HTML, CSS, and JavaScript.
-
-* Create a search bar that uses the `/players` endpoint for autocomplete.
-
+* Build the frontend user interface using **React**.
+* Create a search bar component that uses the `/players` endpoint for autocomplete.
 * Design and implement a player dashboard to display the data fetched from the API.
