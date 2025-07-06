@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import pg from 'pg';
 
-const TEST_MODE = false;
+const TEST_MODE = true;
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -18,44 +18,42 @@ const randomDelay = (min, max) => Math.random() * (max - min) + min;
 const setupDatabase = async () => {
     console.log('Verifying database tables...');
     const createTableQuery = `
-    CREATE TABLE IF NOT EXISTS player_game_logs (
-      game_log_id SERIAL PRIMARY KEY,
-      player_id INT REFERENCES players(player_id),
-      season VARCHAR(10) NOT NULL,
-      game_date DATE NOT NULL,
-      opponent VARCHAR(5),
-      min REAL,
-      pts INT,
-      reb INT,
-      ast INT,
-      stl INT,
-      blk INT,
-      UNIQUE(player_id, game_date)
+    CREATE TABLE IF NOT EXISTS advanced_box_scores (
+      advanced_box_score_id SERIAL PRIMARY KEY,
+      game_log_id INT UNIQUE REFERENCES player_game_logs(game_log_id) ON DELETE CASCADE,
+      offensive_rating REAL,
+      defensive_rating REAL,
+      net_rating REAL,
+      effective_fg_percentage REAL,
+      true_shooting_percentage REAL,
+      usage_percentage REAL,
+      pace REAL,
+      player_impact_estimate REAL
     );
   `;
     try {
         const client = await pool.connect();
         await client.query(createTableQuery);
         client.release();
-        console.log('✅ Game logs table is ready.');
+        console.log('✅ Advanced box scores table is ready.');
     } catch (err) {
         console.error('❌ Error setting up database tables:', err);
         process.exit(1);
     }
 };
 
-const scrapePlayerGameLogs = async (browser, player, season) => {
+const scrapeAdvancedBoxScores = async (browser, player, season) => {
     if (!player || !player.player_id || !season) {
         console.log('Invalid player or season data provided.');
         return [];
     }
-    console.log(`--- Scraping game logs for ${player.full_name} (ID: ${player.player_id}) for the ${season} season ---`);
+    console.log(`--- Scraping advanced box scores for ${player.full_name} (ID: ${player.player_id}) for the ${season} season ---`);
     const page = await browser.newPage();
     let allGameLogs = [];
     try {
         await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
 
-        const url = `https://www.nba.com/stats/player/${player.player_id}/boxscores-traditional?Season=${season}&SeasonType=Regular+Season`;
+        const url = `https://www.nba.com/stats/player/${player.player_id}/boxscores-advanced?Season=${season}&SeasonType=Regular+Season`;
 
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
         try {
@@ -65,7 +63,7 @@ const scrapePlayerGameLogs = async (browser, player, season) => {
             console.log('Cookie consent button not found or already handled.');
         }
 
-        const tableSelector = 'section.nba-stats-content-block table';
+        const tableSelector = 'section.Block_block__62M07 table';
         const noDataSelector = 'div[class*="NoData"]';
 
         try {
@@ -91,20 +89,19 @@ const scrapePlayerGameLogs = async (browser, player, season) => {
                 const rows = document.querySelectorAll(`${selector} tbody tr`);
                 rows.forEach(row => {
                     const columns = row.querySelectorAll('td');
-                    if (columns.length > 20) {
+                    if (columns.length > 15) {
                         const combinedText = columns[0]?.innerText || '';
                         const parts = combinedText.split(' - ');
                         const gameDate = parts[0]?.trim();
-                        const matchupDetails = parts[1] || '';
-                        const matchupParts = matchupDetails.split(' ');
-                        const opponent = matchupParts[matchupParts.length - 1];
-                        const min = parseFloat(columns[2]?.innerText) || 0;
-                        const pts = parseInt(columns[3]?.innerText, 10) || 0;
-                        const reb = parseInt(columns[15]?.innerText, 10) || 0;
-                        const ast = parseInt(columns[16]?.innerText, 10) || 0;
-                        const stl = parseInt(columns[17]?.innerText, 10) || 0;
-                        const blk = parseInt(columns[18]?.innerText, 10) || 0;
-                        logs.push({ gameDate, opponent, min, pts, reb, ast, stl, blk });
+                        const offensive_rating = parseFloat(columns[3]?.innerText) || 0;
+                        const defensive_rating = parseFloat(columns[4]?.innerText, 10) || 0;
+                        const net_rating = parseFloat(columns[5]?.innerText, 10) || 0;
+                        const effective_fg_percentage = parseFloat(columns[13]?.innerText, 10) || 0;
+                        const true_shooting_percentage = parseFloat(columns[14]?.innerText, 10) || 0;
+                        const usage_percentage = parseFloat(columns[15]?.innerText, 10) || 0;
+                        const pace = parseFloat(columns[16]?.innerText, 10) || 0;
+                        const player_impact_estimate = parseFloat(columns[17]?.innerText, 10) || 0;
+                        logs.push({ gameDate, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, usage_percentage, pace, player_impact_estimate });
                     }
                 });
                 return logs;
@@ -123,7 +120,7 @@ const scrapePlayerGameLogs = async (browser, player, season) => {
                 break;
             }
         }
-        console.log(`Found a total of ${allGameLogs.length} game logs for ${player.full_name} in the ${season} season.`);
+        console.log(`Found a total of ${allGameLogs.length} advanced box scores for ${player.full_name} in the ${season} season.`);
         return allGameLogs;
     } catch (err) {
         console.error(`❌ Top-level error scraping game logs for ${player.full_name}:`, err.message);
@@ -141,9 +138,9 @@ const main = async () => {
             console.log("--- RUNNING IN TEST MODE ---");
             
             const testPlayer = { player_id: 201939, full_name: 'Stephen Curry' };
-            const testSeason = '2023-24';
+            const testSeason = '2024-25';
 
-            const gameLogs = await scrapePlayerGameLogs(browser, testPlayer, testSeason);
+            const gameLogs = await scrapeAdvancedBoxScores(browser, testPlayer, testSeason);
 
             if (gameLogs.length > 0) {
                 console.log(`\n--- Test scrape successful for ${testSeason} season! ---`);
@@ -158,7 +155,7 @@ const main = async () => {
         await setupDatabase();
         const client = await pool.connect();
         try {
-            console.log('Fetching top 50 players from the database based on 2024-25 PPG...');
+            console.log('Fetching top 100 players from the database based on 2024-25 PPG...');
             const topPlayersQuery = `
                 SELECT p.player_id, p.full_name 
                 FROM player_season_stats s
@@ -170,7 +167,7 @@ const main = async () => {
             const res = await client.query(topPlayersQuery);
             const topPlayersToScrape = res.rows;
 
-            const seasonsToProcess = ['2024-25', '2023-24', '2022-23', '2021-22', '2020-21', '2019-20'];
+            const seasonsToProcess = ['2024-25', '2023-24', '2022-23'];
 
             console.log(`Found ${topPlayersToScrape.length} top players to scrape for seasons: ${seasonsToProcess.join(', ')}.`);
 
@@ -185,7 +182,7 @@ const main = async () => {
                         continue;
                     }
 
-                    const gameLogs = await scrapePlayerGameLogs(browser, player, season);
+                    const gameLogs = await scrapeAdvancedBoxScores(browser, player, season);
                     for (const log of gameLogs) {
                         await client.query(
                             `INSERT INTO player_game_logs (player_id, season, game_date, opponent, min, pts, reb, ast, stl, blk) 
@@ -202,7 +199,7 @@ const main = async () => {
         } finally {
             if (client) client.release();
             await pool.end();
-            console.log("\n🚀 All game logs have been processed.");
+            console.log("\n🚀 All advanced box scores have been processed.");
         }
     }
 
