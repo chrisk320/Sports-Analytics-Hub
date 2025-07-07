@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 import pg from 'pg';
 
-const TEST_MODE = true;
+const TEST_MODE = false;
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -155,13 +155,13 @@ const main = async () => {
         await setupDatabase();
         const client = await pool.connect();
         try {
-            console.log('Fetching top 100 players from the database based on 2024-25 PPG...');
+            console.log('Fetching player list from the database...');
             const topPlayersQuery = `
                 SELECT p.player_id, p.full_name 
                 FROM player_season_stats s
                 JOIN players p ON s.player_id = p.player_id
                 WHERE s.season = '2024-25'
-                ORDER BY s.points_avg DESC
+                ORDER BY s.rebounds_avg DESC
                 LIMIT 100;
             `;
             const res = await client.query(topPlayersQuery);
@@ -171,25 +171,34 @@ const main = async () => {
 
             console.log(`Found ${topPlayersToScrape.length} top players to scrape for seasons: ${seasonsToProcess.join(', ')}.`);
 
-            for (const season of seasonsToProcess) {
-                console.log(`\n--- PROCESSING SEASON: ${season} ---`);
-                for (const player of topPlayersToScrape) {
-                    const checkQuery = `SELECT 1 FROM player_game_logs WHERE player_id = $1 AND season = $2 LIMIT 1`;
-                    const checkResult = await client.query(checkQuery, [player.player_id, season]);
+            for (const player of topPlayersToScrape) {
+                for (const season of seasonsToProcess) {
+                    console.log(`\nFetching existing game logs for ${player.full_name} in ${season}...`);
+                    const gameLogRes = await client.query('SELECT game_log_id, game_date FROM player_game_logs WHERE player_id = $1 AND season = $2', [player.player_id, season]);
+                    
+                    const gameLogMap = new Map(gameLogRes.rows.map(row => [new Date(row.game_date).toLocaleDateString(), row.game_log_id]));
 
-                    if (checkResult.rowCount > 0) {
-                        console.log(`Data for ${player.full_name} in ${season} already exists. Skipping.`);
+                    if (gameLogMap.size === 0) {
+                        console.log(`No existing traditional game logs found for ${player.full_name} in ${season}. Skipping advanced stats.`);
                         continue;
                     }
 
-                    const gameLogs = await scrapeAdvancedBoxScores(browser, player, season);
-                    for (const log of gameLogs) {
-                        await client.query(
-                            `INSERT INTO player_game_logs (player_id, season, game_date, opponent, min, pts, reb, ast, stl, blk) 
-                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-                      ON CONFLICT (player_id, game_date) DO NOTHING`,
-                            [player.player_id, season, log.gameDate, log.opponent, log.min, log.pts, log.reb, log.ast, log.stl, log.blk]
-                        );
+                    const advancedLogs = await scrapeAdvancedBoxScores(browser, player, season);
+                    
+                    for (const log of advancedLogs) {
+                        const formattedDate = new Date(log.gameDate).toLocaleDateString();
+                        const game_log_id = gameLogMap.get(formattedDate);
+
+                        if (game_log_id) {
+                            await client.query(
+                                `INSERT INTO advanced_box_scores (game_log_id, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, usage_percentage, pace, player_impact_estimate) 
+                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+                                 ON CONFLICT (game_log_id) DO NOTHING`,
+                                [game_log_id, log.offensive_rating, log.defensive_rating, log.net_rating, log.effective_fg_percentage, log.true_shooting_percentage, log.usage_percentage, log.pace, log.player_impact_estimate]
+                            );
+                        } else {
+                            console.warn(`Could not find matching game_log_id for date: ${formattedDate}`);
+                        }
                     }
                     await sleep(randomDelay(2000, 5000));
                 }
