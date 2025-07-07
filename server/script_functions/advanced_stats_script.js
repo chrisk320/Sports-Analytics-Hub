@@ -161,7 +161,7 @@ const main = async () => {
                 FROM player_season_stats s
                 JOIN players p ON s.player_id = p.player_id
                 WHERE s.season = '2024-25'
-                ORDER BY s.rebounds_avg DESC
+                ORDER BY s.points_avg DESC
                 LIMIT 100;
             `;
             const res = await client.query(topPlayersQuery);
@@ -173,6 +173,20 @@ const main = async () => {
 
             for (const player of topPlayersToScrape) {
                 for (const season of seasonsToProcess) {
+                    const checkQuery = `
+                        SELECT 1 
+                        FROM advanced_box_scores abs
+                        JOIN player_game_logs pgl ON abs.game_log_id = pgl.game_log_id
+                        WHERE pgl.player_id = $1 AND pgl.season = $2
+                        LIMIT 1;
+                    `;
+                    const checkResult = await client.query(checkQuery, [player.player_id, season]);
+
+                    if (checkResult.rowCount > 0) {
+                        console.log(`Advanced stats for ${player.full_name} in ${season} already exist. Skipping.`);
+                        continue; // Skip to the next season for this player
+                    }
+
                     console.log(`\nFetching existing game logs for ${player.full_name} in ${season}...`);
                     const gameLogRes = await client.query('SELECT game_log_id, game_date FROM player_game_logs WHERE player_id = $1 AND season = $2', [player.player_id, season]);
                     
