@@ -58,7 +58,7 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
               <div>
                 <h3 className="text-xl font-semibold mb-4 text-blue-400">Recent Games</h3>
                 <div className="space-y-2">
-                  {playerData?.gameLogs?.slice(0, 10).map(log => ( // Show last 10 games
+                  {playerData?.gameLogs?.map(log => ( 
                     <div key={log.game_log_id} className="flex justify-between items-center bg-gray-700 p-3 rounded-lg">
                       <div className="flex items-center space-x-2">
                           <Calendar className="w-4 h-4 text-gray-400"/>

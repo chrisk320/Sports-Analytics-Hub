@@ -61,7 +61,8 @@ export const getGameLogs = async (req, res) => {
         const query = `
             SELECT * FROM player_game_logs 
             WHERE player_id = $1 
-            ORDER BY game_date DESC;
+            ORDER BY game_date DESC
+            LIMIT 10;
         `;
         const result = await pool.query(query, [playerId]);
         res.status(200).json(result.rows);
