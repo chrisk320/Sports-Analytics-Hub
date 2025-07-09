@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, X, Calendar, Star, Loader } from 'lucide-react';
+import RecentGamesBarChart from './RecentGamesBarChart';
 
 const StatsModal = ({ player, playerData, isLoading, onClose }) => {
   if (!player) return null;
@@ -58,7 +59,8 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
               <div>
                 <h3 className="text-xl font-semibold mb-4 text-blue-400">Recent Games</h3>
                 <div className="space-y-2">
-                  {playerData?.gameLogs?.map(log => ( 
+                  <RecentGamesBarChart data={playerData?.gameLogs}/>
+                  {/* {playerData?.gameLogs?.map(log => ( 
                     <div key={log.game_log_id} className="flex justify-between items-center bg-gray-700 p-3 rounded-lg">
                       <div className="flex items-center space-x-2">
                           <Calendar className="w-4 h-4 text-gray-400"/>
@@ -70,7 +72,7 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
                         <span>AST: {log.ast}</span>
                       </div>
                     </div>
-                  ))}
+                  ))} */}
                 </div>
               </div>
             </div>
