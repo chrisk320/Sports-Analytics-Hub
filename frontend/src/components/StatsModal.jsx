@@ -1,9 +1,23 @@
-import React from 'react';
-import { User, X, Calendar, Star, Loader } from 'lucide-react';
+import React, { useState, useEffect } from 'react'; // Import useState
+import { User, X, Star, Loader } from 'lucide-react';
 import RecentGamesBarChart from './RecentGamesBarChart';
 
 const StatsModal = ({ player, playerData, isLoading, onClose }) => {
+  const [activeStat, setActiveStat] = useState('pts');
+
+  useEffect(() => {
+    if (player) {
+      setActiveStat('pts');
+    }
+  }, [player]); 
+
   if (!player) return null;
+
+  const statInfo = {
+    pts: 'Points',
+    reb: 'Rebounds',
+    ast: 'Assists'
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -16,17 +30,16 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
             </div>
             <div>
               <h2 className="text-3xl font-bold">{player.full_name}</h2>
-              {/* <p className="text-gray-400">{player.team} - {player.position}</p> */}
             </div>
           </div>
-           <div className="flex items-center space-x-4">
-             <button className="p-2 rounded-full bg-yellow-500 hover:bg-yellow-400 transition-colors">
-                <Star className="w-6 h-6 text-white"/>
-             </button>
-             <button onClick={onClose} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
-                <X className="w-6 h-6"/>
-             </button>
-           </div>
+          <div className="flex items-center space-x-4">
+            <button className="p-2 rounded-full bg-yellow-500 hover:bg-yellow-400 transition-colors">
+              <Star className="w-6 h-6 text-white" />
+            </button>
+            <button onClick={onClose} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -36,7 +49,32 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
               <Loader className="w-12 h-12 animate-spin text-blue-500" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-8">
+              {/* Recent Games Chart Section */}
+              <div>
+                {/* Title now updates dynamically */}
+                <h3 className="text-xl font-semibold mb-4 text-blue-400">Recent {statInfo[activeStat]} per Game</h3>
+                <div className="w-full h-[300px] mb-4">
+                  {/* Pass the activeStat to the chart component */}
+                  <RecentGamesBarChart data={playerData?.gameLogs} stat={activeStat} />
+                </div>
+                {/* ** NEW: Stat selection buttons ** */}
+                <div className="flex justify-center space-x-2">
+                  {Object.keys(statInfo).map(statKey => (
+                    <button
+                      key={statKey}
+                      onClick={() => setActiveStat(statKey)}
+                      className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeStat === statKey
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                    >
+                      {statInfo[statKey]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Season Averages */}
               <div>
                 <h3 className="text-xl font-semibold mb-4 text-blue-400">Season Averages</h3>
@@ -52,27 +90,6 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Recent Games */}
-              <div>
-                <h3 className="text-xl font-semibold mb-4 text-blue-400">Recent Games</h3>
-                <div className="space-y-2">
-                  <RecentGamesBarChart data={playerData?.gameLogs}/>
-                  {/* {playerData?.gameLogs?.map(log => ( 
-                    <div key={log.game_log_id} className="flex justify-between items-center bg-gray-700 p-3 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                          <Calendar className="w-4 h-4 text-gray-400"/>
-                          <span>{new Date(log.game_date).toLocaleDateString()} vs {log.opponent}</span>
-                      </div>
-                      <div className="flex space-x-4 font-mono text-sm">
-                        <span>PTS: {log.pts}</span>
-                        <span>REB: {log.reb}</span>
-                        <span>AST: {log.ast}</span>
-                      </div>
-                    </div>
-                  ))} */}
                 </div>
               </div>
             </div>

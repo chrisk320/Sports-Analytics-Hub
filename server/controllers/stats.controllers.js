@@ -43,7 +43,8 @@ export const getSeasonAverages = async (req, res) => {
         const query = `
             SELECT * FROM player_season_stats 
             WHERE player_id = $1 
-            ORDER BY season DESC;
+            ORDER BY season DESC
+            LIMIT 5;
         `;
         const result = await pool.query(query, [playerId]);
         res.status(200).json(result.rows);

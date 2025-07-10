@@ -1,13 +1,19 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-const RecentGamesBarChart = ({ data }) => {
+const RecentGamesBarChart = ({ data, stat }) => {
     if (!data || data.length === 0) return null;
 
     const chartData = data.map(log => ({
         date: new Date(log.game_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
-        pts: log.pts,
+        value: log[stat],
     })).reverse();
+
+    const statName = {
+        pts: 'Points',
+        reb: 'Rebounds',
+        ast: 'Assists'
+    }[stat];
 
     return (
         <ResponsiveContainer width="100%" height={300}>
@@ -23,7 +29,7 @@ const RecentGamesBarChart = ({ data }) => {
                     }}
                     labelStyle={{ color: '#E2E8F0' }}
                 />
-                <Bar dataKey="pts" fill="#4299E1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" name={statName} fill="#4299E1" radius={[4, 4, 0, 0]} />
             </BarChart>
         </ResponsiveContainer>
     );
