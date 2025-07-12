@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer';
-import pg from 'pg'; // The PostgreSQL client
+import pg from 'pg'; 
 
 // --- Database Configuration ---
 const { Pool } = pg;
@@ -11,9 +11,6 @@ const pool = new Pool({
     port: 5432,
 });
 
-/**
- * Creates the necessary tables in the database if they don't already exist.
- */
 const setupDatabase = async () => {
     console.log('Setting up database tables...');
     const createTablesQuery = `
@@ -46,9 +43,6 @@ const setupDatabase = async () => {
     }
 };
 
-/**
- * Scrapes player data for a single NBA season, handling all pages.
- */
 const scrapeAndSeedSeason = async (browser, season) => {
     console.log(`--- Starting scrape for ${season} season ---`);
     const page = await browser.newPage();
@@ -72,7 +66,6 @@ const scrapeAndSeedSeason = async (browser, season) => {
             console.log('Cookie consent button not found, continuing...');
         }
 
-        // --- PAGINATION LOGIC ---
         let currentPage = 1;
 
         while (true) {
@@ -112,8 +105,6 @@ const scrapeAndSeedSeason = async (browser, season) => {
                 console.log('Next button found, clicking to go to next page...');
                 await nextButton.click();
                 try {
-                    // **THE FIX**: Wait until the first player's name is different,
-                    // which confirms the new page content has loaded.
                     await page.waitForFunction(
                         (previousFirstName, selector) => {
                             const currentFirstName = document.querySelector(`${selector} tbody tr td:nth-child(2)`)?.innerText;
@@ -125,7 +116,6 @@ const scrapeAndSeedSeason = async (browser, season) => {
                     );
                     currentPage++;
                 } catch (e) {
-                    // If this times out, the content didn't change, so we're done.
                     console.log('Content did not change after click. Assuming this is the last page.');
                     break;
                 }
@@ -135,7 +125,6 @@ const scrapeAndSeedSeason = async (browser, season) => {
             }
         }
 
-        // --- DATABASE INSERTION LOGIC (now runs once with all players) ---
         console.log(`Scraped a total of ${allPlayersData.length} players. Inserting into database...`);
         for (const player of allPlayersData) {
             if (!player.playerId) continue;
@@ -157,16 +146,13 @@ const scrapeAndSeedSeason = async (browser, season) => {
 };
 
 
-/**
- * Main function to control the scraping process.
- */
 const main = async () => {
     let seasonsToScrape = process.argv.slice(2);
 
     if (seasonsToScrape.length === 0) {
         console.log("No seasons provided. Using default list: ['2022-23', '2023-24', '2024-25']");
         console.log("To specify seasons, run: node seed-database.js 2021-22 2020-21");
-        seasonsToScrape = ["2022-23", "2023-24", "2024-25"];
+        seasonsToScrape = ["2024-25"];
     } else {
         console.log(`Scraping for seasons provided via command line: ${seasonsToScrape.join(', ')}`);
     }
@@ -184,5 +170,4 @@ const main = async () => {
     console.log("\n🚀 All seasons processed. Database is populated.");
 };
 
-// Run the main function
 main();
