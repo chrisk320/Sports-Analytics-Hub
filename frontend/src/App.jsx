@@ -134,8 +134,6 @@ export default function App() {
         seasonAverages: averagesRes.data,
         gameLogs: gameLogsRes.data
       });
-      console.log(averagesRes);
-      console.log(gameLogsRes);
     } catch (error) {
       console.error("Failed to fetch player details:", error);
       setActivePlayerData(null);

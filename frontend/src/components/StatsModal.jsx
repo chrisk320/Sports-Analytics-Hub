@@ -9,7 +9,7 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
     if (player) {
       setActiveStat('pts');
     }
-  }, [player]); 
+  }, [player]);
 
   if (!player) return null;
 
@@ -19,14 +19,27 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
     ast: 'Assists'
   };
 
+  const addDefaultSrc = (ev) => {
+    ev.target.src = 'https://cdn.nba.com/headshots/nba/latest/1040x760/fallback.png';
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
       <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col text-white animate-fade-in">
         {/* Modal Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 rounded-full bg-gray-700 border-4 border-blue-500 flex items-center justify-center">
-              <User className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 rounded-full bg-gray-700 border-4 border-blue-500 flex items-center justify-center overflow-hidden">
+              {player.headshot_url ? (
+                <img
+                  src={player.headshot_url}
+                  alt={player.full_name}
+                  className="w-full h-full object-cover"
+                  onError={addDefaultSrc}
+                />
+              ) : (
+                <User className="w-8 h-8 text-gray-400" />
+              )}
             </div>
             <div>
               <h2 className="text-3xl font-bold">{player.full_name}</h2>

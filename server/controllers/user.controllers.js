@@ -14,7 +14,7 @@ export const getFavorites = async (req, res) => {
     console.log(`Fetching favorites for user: ${userId}`);
     try {
         const query = `
-            SELECT p.player_id, p.full_name 
+            SELECT p.player_id, p.full_name, p.headshot_url 
             FROM players p
             JOIN user_favorites f ON p.player_id = f.player_id
             WHERE f.user_id = $1;

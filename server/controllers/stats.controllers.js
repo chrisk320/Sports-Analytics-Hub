@@ -12,7 +12,7 @@ const pool = new Pool({
 export const getPlayers = async (req, res) => {
     console.log(`Received request for all players list.`);
     try {
-        const query = 'SELECT player_id, full_name FROM players ORDER BY full_name ASC;';
+        const query = 'SELECT player_id, full_name, headshot_url FROM players ORDER BY full_name ASC;';
         const result = await pool.query(query);
         res.status(200).json(result.rows);
     } catch (err) {
@@ -24,7 +24,7 @@ export const getPlayer = async (req, res) => {
     const { playerId } = req.params;
     console.log(`Received request for player info for ID: ${playerId}`);
     try {
-        const query = 'SELECT player_id, full_name FROM players WHERE player_id = $1;';
+        const query = 'SELECT player_id, full_name, headshot_url FROM players WHERE player_id = $1;';
         const result = await pool.query(query, [playerId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Player not found' });
