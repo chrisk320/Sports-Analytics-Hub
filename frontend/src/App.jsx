@@ -47,18 +47,18 @@ export default function App() {
 
   useEffect(() => {
     if (user) {
-        const fetchFavorites = async () => {
-            try {
-                setIsLoading(true);
-                const response = await axios.get(`${API_BASE_URL}/users/${user.id}/favorites`);
-                setSelectedPlayers(response.data);
-            } catch (error) {
-                console.error("Failed to fetch favorite players:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchFavorites();
+      const fetchFavorites = async () => {
+        try {
+          setIsLoading(true);
+          const response = await axios.get(`${API_BASE_URL}/users/${user.id}/favorites`);
+          setSelectedPlayers(response.data);
+        } catch (error) {
+          console.error("Failed to fetch favorite players:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchFavorites();
     }
   }, [user]);
 
@@ -92,8 +92,8 @@ export default function App() {
 
   const handleAddPlayer = async (player) => {
     if (!user) {
-        alert("Please sign in to add players.");
-        return;
+      alert("Please sign in to add players.");
+      return;
     }
     if (!selectedPlayers.find(p => p.player_id === player.player_id)) {
       setSelectedPlayers(prev => [...prev, player]);
@@ -111,7 +111,7 @@ export default function App() {
 
   const handleRemovePlayer = async (playerId) => {
     if (!user) return;
-    
+
     const originalPlayers = [...selectedPlayers];
     setSelectedPlayers(prev => prev.filter(p => p.player_id !== playerId));
     try {
@@ -128,7 +128,7 @@ export default function App() {
     try {
       const [averagesRes, gameLogsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/players/${player.player_id}/season-averages`),
-        axios.get(`${API_BASE_URL}/players/${player.player_id}/gamelogs`)
+        axios.get(`${API_BASE_URL}/players/${player.player_id}/full-gamelogs`)
       ]);
       setActivePlayerData({
         seasonAverages: averagesRes.data,
@@ -154,7 +154,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 font-sans text-white flex flex-col">
-      <Header isLoading={isLoading} user={user} setToken={setToken}/>
+      <Header isLoading={isLoading} user={user} setToken={setToken} />
 
       <main className="w-screen px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <div className="space-y-12">

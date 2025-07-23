@@ -44,10 +44,10 @@ export const getSeasonAverages = async (req, res) => {
             SELECT * FROM player_season_stats 
             WHERE player_id = $1 
             ORDER BY season DESC
-            LIMIT 5;
+            LIMIT 1;
         `;
         const result = await pool.query(query, [playerId]);
-        res.status(200).json(result.rows);
+        res.status(200).json(result.rows[0] || null);
     } catch (err) {
         console.error('Error fetching season averages', err.stack);
         res.status(500).send('Server Error');
@@ -69,6 +69,34 @@ export const getGameLogs = async (req, res) => {
         res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error executing query for game logs', err.stack);
+        res.status(500).send('Server Error');
+    }
+}
+
+export const getFullGameLogs = async (req, res) => {
+    const { playerId } = req.params;
+    try {
+        const query = `
+            SELECT 
+                pgl.*,
+                abs.offensive_rating,
+                abs.defensive_rating,
+                abs.net_rating,
+                abs.effective_fg_percentage,
+                abs.true_shooting_percentage,
+                abs.usage_percentage,
+                abs.pace,
+                abs.player_impact_estimate
+            FROM player_game_logs pgl
+            LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id
+            WHERE pgl.player_id = $1
+            ORDER BY pgl.game_date DESC
+            LIMIT 10;
+        `;
+        const result = await pool.query(query, [playerId]);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error fetching full game logs', err.stack);
         res.status(500).send('Server Error');
     }
 }
