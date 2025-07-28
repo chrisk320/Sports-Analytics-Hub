@@ -100,3 +100,32 @@ export const getFullGameLogs = async (req, res) => {
         res.status(500).send('Server Error');
     }
 }
+
+export const getGameLogsByOpponent = async (req, res) => {
+    const { playerId, opponentAbbr } = req.params;
+    console.log(`Received request for player ${playerId} vs ${opponentAbbr}`);
+    try {
+        const query = `
+            SELECT 
+                pgl.*,
+                abs.offensive_rating,
+                abs.defensive_rating,
+                abs.net_rating,
+                abs.effective_fg_percentage,
+                abs.true_shooting_percentage,
+                abs.usage_percentage,
+                abs.pace,
+                abs.player_impact_estimate
+            FROM player_game_logs pgl
+            LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id
+            WHERE pgl.player_id = $1 AND pgl.opponent = $2
+            ORDER BY pgl.game_date DESC
+            LIMIT 5;
+        `;
+        const result = await pool.query(query, [playerId, opponentAbbr]);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error fetching filtered game logs', err.stack);
+        res.status(500).send('Server Error');
+    }
+}

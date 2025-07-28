@@ -40,10 +40,15 @@ export default function App() {
   const [allPlayers, setAllPlayers] = useState([]);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
   const [activePlayer, setActivePlayer] = useState(null);
-  const [activePlayerData, setActivePlayerData] = useState(null);
+  const [activePlayerData, setActivePlayerData] = useState({
+    seasonAverages: null,
+    recentGameLogs: [],
+    displayGameLogs: [],
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [allTeams, setAllTeams] = useState([]);
 
   useEffect(() => {
     if (user) {
@@ -63,18 +68,22 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    const fetchAllPlayers = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/players`);
-        setAllPlayers(response.data);
+        const [playersRes, teamsRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/players`),
+          axios.get(`${API_BASE_URL}/teams`)
+        ]);
+        setAllPlayers(playersRes.data);
+        setAllTeams(teamsRes.data);
       } catch (error) {
-        console.error("Failed to fetch players:", error);
+        console.error("Failed to fetch initial data:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchAllPlayers();
+    fetchInitialData();
   }, []);
 
   const handleSearchChange = (e) => {
@@ -87,6 +96,33 @@ export default function App() {
       setSearchResults(filtered.slice(0, 5));
     } else {
       setSearchResults([]);
+    }
+  };
+
+  const handleFilterByOpponent = async (playerId, opponentAbbr) => {
+    if (!playerId || !opponentAbbr) return;
+
+    // If "All Teams" is selected, reset the display logs to the original recent games
+    if (opponentAbbr === 'ALL') {
+      setActivePlayerData(prevData => ({
+        ...prevData,
+        displayGameLogs: prevData.recentGameLogs
+      }));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/players/${playerId}/gamelogs/${opponentAbbr}`);
+      // ** THE FIX: Only update the displayGameLogs, leave recentGameLogs untouched **
+      setActivePlayerData(prevData => ({
+        ...prevData,
+        displayGameLogs: response.data
+      }));
+    } catch (error) {
+      console.error(`Failed to fetch game logs against ${opponentAbbr}:`, error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -132,11 +168,12 @@ export default function App() {
       ]);
       setActivePlayerData({
         seasonAverages: averagesRes.data,
-        gameLogs: gameLogsRes.data
+        recentGameLogs: gameLogsRes.data,
+        displayGameLogs: gameLogsRes.data,
       });
     } catch (error) {
       console.error("Failed to fetch player details:", error);
-      setActivePlayerData(null);
+      setActivePlayerData({ seasonAverages: null, recentGameLogs: [], displayGameLogs: [] });
     } finally {
       setIsLoading(false);
     }
@@ -193,6 +230,8 @@ export default function App() {
         playerData={activePlayerData}
         isLoading={isLoading}
         onClose={handleCloseModal}
+        allTeams={allTeams}
+        onFilter={handleFilterByOpponent}
       />
 
       <footer className="text-center text-gray-500 py-8 mt-auto">

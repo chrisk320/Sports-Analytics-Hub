@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import stats from './routes/stats.routes.js';
-import userFavorites from './routes/user.routes.js'
+import userFavorites from './routes/user.routes.js';
+import teams from './routes/teams.routes.js';
 
 dotenv.config()
 
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use("/players", stats);
 app.use('/users', userFavorites);
+app.use('/teams', teams)
 
 app.listen(5000, () => {
     console.log("Server has started on port 5000")

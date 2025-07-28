@@ -2,18 +2,29 @@ import React, { useState, useEffect } from 'react'; // Import useState
 import { User, X, Star, Loader } from 'lucide-react';
 import RecentGamesBarChart from './RecentGamesBarChart';
 
-const StatsModal = ({ player, playerData, isLoading, onClose }) => {
+const StatsModal = ({ player, playerData, isLoading, onClose, allTeams, onFilter }) => {
   const [activeStat, setActiveStat] = useState('pts');
+  const [selectedOpponent, setSelectedOpponent] = useState('ALL');
 
   useEffect(() => {
-    if (player) setActiveStat('pts');
+    if (player) {
+      setActiveStat('pts');
+      setSelectedOpponent('ALL');
+    }
   }, [player]);
 
   if (!player) return null;
 
   const currentSeason = playerData?.seasonAverages;
-  const recentGames = playerData?.gameLogs || [];
+  const chartGameLogs = playerData?.recentGameLogs || [];
+  const tableGameLogs = playerData?.displayGameLogs || [];
   const statInfo = { pts: 'Points', reb: 'Rebounds', ast: 'Assists' };
+
+  const handleOpponentChange = (e) => {
+    const opponentAbbr = e.target.value;
+    setSelectedOpponent(opponentAbbr);
+    onFilter(player.player_id, opponentAbbr);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -45,15 +56,11 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
             <div className="flex justify-center items-center h-96"><Loader className="w-12 h-12 animate-spin text-blue-500" /></div>
           ) : (
             <div className="space-y-8">
-              {/* Chart Section */}
               <div>
-                {/* Title now updates dynamically */}
                 <h3 className="text-xl font-semibold mb-4 text-blue-400">Recent {statInfo[activeStat]} per Game</h3>
                 <div className="w-full h-[300px] mb-4">
-                  {/* Pass the activeStat to the chart component */}
-                  <RecentGamesBarChart data={playerData?.gameLogs} stat={activeStat} />
+                  <RecentGamesBarChart data={chartGameLogs} stat={activeStat} />
                 </div>
-                {/* ** NEW: Stat selection buttons ** */}
                 <div className="flex justify-center space-x-2">
                   {Object.keys(statInfo).map(statKey => (
                     <button
@@ -70,9 +77,28 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
                 </div>
               </div>
 
-              {/* Detailed Game Log Table */}
               <div>
-                <h3 className="text-xl font-semibold mb-4 text-blue-400">Recent Game Logs</h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-blue-400">
+                      {selectedOpponent === 'ALL' ? 'Recent Game Logs' : `Game Logs vs ${selectedOpponent}`}
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                        <label htmlFor="opponent-select" className="text-sm text-gray-400">Filter by Opponent:</label>
+                        <select 
+                          id="opponent-select"
+                          value={selectedOpponent}
+                          onChange={handleOpponentChange}
+                          className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
+                        >
+                          <option value="ALL">All Teams</option>
+                          {allTeams.map(team => (
+                            <option key={team.team_abbreviation} value={team.team_abbreviation}>
+                              {team.team_name}
+                            </option>
+                          ))}
+                        </select>
+                    </div>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-400 uppercase bg-gray-700">
@@ -91,9 +117,9 @@ const StatsModal = ({ player, playerData, isLoading, onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentGames.map(log => (
+                      {tableGameLogs.map(log => (
                         <tr key={log.game_log_id} className="border-b border-gray-700 hover:bg-gray-700/50">
-                          <td className="px-4 py-3">{new Date(log.game_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })}</td>
+                          <td className="px-4 py-3">{new Date(log.game_date).toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })}</td>
                           <td className="px-4 py-3">{log.opponent}</td>
                           <td className="px-4 py-3 text-right">{log.min}</td>
                           <td className="px-4 py-3 text-right font-bold">{log.pts}</td>
