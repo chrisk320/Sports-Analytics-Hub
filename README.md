@@ -1,6 +1,6 @@
 # NBA Player Stats Dashboard
 
-This project is a full-stack application designed to help users analyze NBA player performance. It features a robust backend data pipeline that scrapes historical data from `stats.nba.com` and a dedicated API server to serve that data to a user-facing React application.
+This project is a full-stack application for analyzing NBA player performance, featuring a robust backend data pipeline, a RESTful API, and a modern React frontend. It supports both traditional and advanced stats, personalized dashboards, and a conversational AI assistant.
 
 ## Project Architecture
 
@@ -8,51 +8,86 @@ This project is built with a professional, separated architecture to handle data
 
 ### 1. Data Pipeline (Scraping & Seeding Scripts)
 
-The data pipeline consists of a set of standalone Node.js scripts that are run offline to populate the database.
-
-* **Data Scrapers**: A suite of scripts that use **Puppeteer** to scrape `stats.nba.com` for traditional stats (season averages, game logs) and advanced stats (ratings, percentages). They are designed to be resumable and handle dynamic website features like pagination and cookie modals.
-* **Headshot Seeder**: An efficient script that generates and saves the direct URL for each player's headshot by leveraging a predictable URL pattern, avoiding the need for additional scraping.
+- **Data Scrapers:** Node.js scripts using **Puppeteer** to scrape `stats.nba.com` for traditional (season averages, game logs) and advanced stats (usage %, ratings, shooting percentages, etc). Scripts are resumable and handle dynamic web features.
+- **Headshot Seeder:** Generates and saves official NBA headshot URLs for each player using a predictable pattern.
 
 ### 2. Database (PostgreSQL)
 
-A PostgreSQL database serves as the single source of truth for the application. It contains multiple relational tables:
+A PostgreSQL database serves as the single source of truth, with tables for:
+- `players`: Player info and headshot URL.
+- `player_season_stats`: Season averages for each player.
+- `player_game_logs`: Detailed, game-by-game stats.
+- `advanced_box_scores` & `advanced_scoring_logs`: Advanced metrics linked to specific games.
+- `user_favorites`: Persistent, user-specific favorite player lists.
+- `teams`: NBA team names and abbreviations.
 
-* `players`: Stores a unique record for each player, including their ID, name, and a direct URL to their headshot.
-* `player_season_stats`: Stores the season averages for each player for every season scraped.
-* `player_game_logs`: Stores the detailed, traditional game-by-game stats for each player.
-* `advanced_box_scores` & `advanced_scoring_logs`: Separate tables for advanced metrics, linked directly to a specific game in `player_game_logs`.
-* `user_favorites`: Links a `user_id` to a `player_id`, allowing for persistent, user-specific player lists.
+### 3. Backend API (Express.js)
 
-### 3. Backend API (`server.js`, Routes & Controllers)
+A RESTful API provides access to all data. Key endpoints:
 
-An Express.js server provides a clean, RESTful API to access the data stored in the database. It follows a standard MVC pattern and is designed to be fast and lightweight by only reading from the pre-populated database.
+#### Players
+- `GET /players`: List all players.
+- `GET /players/:playerId`: Get player info.
+- `GET /players/:playerId/season-averages`: Latest season averages.
+- `GET /players/:playerId/game-logs`: Last 10 game logs (traditional stats).
+- `GET /players/:playerId/full-game-logs`: Last 10 game logs with advanced stats.
+- `GET /players/:playerId/game-logs/:opponent`: Filter game logs by opponent.
+
+#### Teams
+- `GET /teams`: List all NBA teams.
+
+#### User Favorites
+- `GET /users/:userId/favorites`: Get user’s favorite players.
+- `POST /users/:userId/favorites`: Add a player to favorites.
+- `DELETE /users/:userId/favorites/:playerId`: Remove a player from favorites.
+
+#### Chat (AI Assistant)
+- `POST /chat`: Ask natural language NBA stats questions (e.g., "Show me LeBron's advanced stats last 5 games"). Returns answers and structured data.
 
 ### 4. Frontend (React)
 
-A modern, responsive single-page application built with **React** and styled with **Tailwind CSS**. It provides a user-friendly interface for searching, viewing, and managing a list of favorite players.
+A modern, responsive single-page app built with **React** and **Tailwind CSS**. Key features:
+
+- **User Authentication:** Google OAuth sign-in/out, persistent sessions.
+- **Personalized Dashboard:** Add/remove favorite players, persistent across sessions.
+- **Live Player Search:** Autocomplete search bar for all NBA players.
+- **Player Cards:** Show headshot, name, and allow removal from favorites.
+- **Stats Modal:**
+  - Season averages (points, rebounds, assists).
+  - Recent game logs (table: minutes, points, rebounds, assists, steals, usage %, TS%, OffRtg, DefRtg).
+  - Interactive bar chart (points, rebounds, assists).
+  - Filter game logs by opponent team.
+- **ChatBot:** Natural language NBA stats assistant powered by OpenAI, can answer questions about player stats, advanced stats, and matchups.
+- **Responsive UI:** Modern, mobile-friendly, styled with Tailwind CSS.
 
 ## Current Features
 
-* **Full-Stack Application:** Complete separation between the frontend, backend API, and database.
-* **User Authentication:** Secure sign-in/logout functionality using Google OAuth, with persistent user sessions.
-* **Personalized Dashboards:** Logged-in users can add and remove players, and their selections are saved to the database and reloaded on subsequent visits.
-* **Live Player Search:** An interactive search bar with autocomplete that queries the backend API.
-* **Player Headshots:** Player cards and modals display official NBA headshots for a professional look.
-* **Interactive Data Visualization:** The player stats modal features a bar chart, built with **Recharts**, that visualizes recent game performance. Users can dynamically switch the chart to display Points, Rebounds, or Assists.
+- **Full-Stack Application:** Clean separation between frontend, backend API, and database.
+- **User Authentication:** Secure Google OAuth login/logout, persistent sessions.
+- **Personalized Dashboards:** Add/remove favorite players, persistent across sessions.
+- **Live Player Search:** Autocomplete search bar for all NBA players.
+- **Player Headshots:** Official NBA headshots on player cards and modals.
+- **Stats Modal:**
+  - Season averages and recent game logs (traditional and advanced stats).
+  - Interactive bar chart for points, rebounds, assists.
+  - Filter logs by opponent team.
+- **AI ChatBot:** Ask natural language questions about NBA stats, advanced stats, and matchups.
+- **Interactive Data Visualization:** Bar chart visualizes recent game performance, switchable by stat.
+- **Team Filter:** Filter player game logs by opponent.
+- **Persistent Favorites:** User favorites are saved and reloaded on login.
+- **Mobile-Friendly UI:** Responsive, modern design with Tailwind CSS.
 
 ## Technology Stack
 
-* **Frontend**: React, Tailwind CSS, Axios, Recharts
-* **Backend**: Node.js, Express.js
-* **Database**: PostgreSQL
-* **Authentication**: Google OAuth 2.0
-* **Web Scraping**: Puppeteer
-* **Node.js-Postgres Bridge**: `pg` (node-postgres)
+- **Frontend:** React, Tailwind CSS, Axios, Recharts
+- **Backend:** Node.js, Express.js
+- **Database:** PostgreSQL
+- **Authentication:** Google OAuth 2.0
+- **Web Scraping:** Puppeteer
+- **Node.js-Postgres Bridge:** `pg` (node-postgres)
+- **AI Assistant:** OpenAI GPT (via API)
 
 ## Next Steps
 
-With a feature-rich frontend and a comprehensive data pipeline, the next phase could focus on:
-
-* **Displaying Advanced Stats**: Update the player stats modal to display the advanced box score and scoring data that has already been collected.
-* **AI Model Integration**: Return to the original goal of building a predictive model using the rich dataset and display its predictions in the UI.
-* **Deployment**: Deploy the full-stack application (frontend, backend, and database) to the web using services like Vercel and Heroku.
+- **AI Model Integration:** Build and display predictive models using the rich dataset.
+- **Deployment:** Deploy the full-stack app (frontend, backend, and database) to the web using services like Vercel and Heroku.
