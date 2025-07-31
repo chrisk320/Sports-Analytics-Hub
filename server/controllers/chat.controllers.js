@@ -76,21 +76,21 @@ export const chatWithAI = async (req, res) => {
                 {
                     role: "system",
                     content: `You are an NBA stats assistant. Analyze the user's question and extract the following information in JSON format:
-                    {
-                        "player_name": "player name if mentioned",
-                        "team_name": "team name if mentioned", 
-                        "stat_type": "specific stat mentioned (points/rebounds/assists/usage_percentage/etc) or null if general stats",
-                        "time_period": "last X games/season/etc",
-                        "query_type": "player_stats/player_vs_team/general_stats",
-                        "requested_advanced_stats": true/false (true if user explicitly asks for advanced stats, usage percentage, ratings, etc.)
-                    }
-                    
-                    Basic stats: points, rebounds, assists, steals, blocks, minutes
-                    Advanced stats: usage_percentage, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, pace, player_impact_estimate
-                    
-                    Set requested_advanced_stats to true only if user explicitly asks for advanced stats, usage percentage, ratings, etc.
-                    
-                    Return only the JSON object, nothing else.`
+                {
+                    "player_name": "player name if mentioned",
+                    "team_name": "team name if mentioned", 
+                    "stat_type": "specific stat mentioned (points/rebounds/assists/usage_percentage/etc) or null if general stats",
+                    "time_period": "last X games/season/etc",
+                    "query_type": "player_stats/player_vs_team/general_stats/prediction",
+                    "requested_advanced_stats": true/false,
+                    "is_prediction_request": true/false
+                }
+                
+                - Set "query_type" to "prediction" and "is_prediction_request" to true if the user is asking for a prediction, projection, or estimate of a player's future performance (e.g., "Predict Stephen Curry's points for his next game against the Clippers", "How many rebounds will Jokic get tomorrow?", "Projected assists for LeBron vs. the Celtics").
+                - Otherwise, set "is_prediction_request" to false and use the appropriate query_type.
+                - Only set "requested_advanced_stats" to true if the user explicitly asks for advanced stats, usage percentage, ratings, etc.
+                
+                Return only the JSON object, nothing else.`
                 },
                 {
                     role: "user",
@@ -105,6 +105,105 @@ export const chatWithAI = async (req, res) => {
 
         let data = null;
         let queryDescription = '';
+
+        if (analysis.is_prediction_request && analysis.player_name) {
+            const player = await findPlayerId(analysis.player_name);
+            if (!player) {
+                return res.status(404).json({
+                    error: `Player "${analysis.player_name}" not found in the database`
+                });
+            }
+
+            const statKey = analysis.stat_type || 'pts';
+            const statLabelMap = {
+                points: 'pts',
+                rebounds: 'reb',
+                assists: 'ast',
+                steals: 'stl',
+                blocks: 'blk',
+                minutes: 'min'
+            };
+            const statLabel = statLabelMap[statKey] || statKey;
+            console.log(statLabel);
+            const limit = 5;
+
+            // Fetch last N games overall
+            const gamesOverall = await executeQuery(
+                `SELECT * FROM player_game_logs WHERE player_id = $1 ORDER BY game_date DESC LIMIT $2`,
+                [player.player_id, limit]
+            );
+            console.log('DEBUG: Last 5 games overall:', gamesOverall);
+
+            // Fetch last N games vs. opponent (if specified)
+            let gamesVsOpponent = [];
+            let teamAbbr = null;
+            if (analysis.team_name) {
+                teamAbbr = await findTeamAbbr(analysis.team_name);
+                console.log('DEBUG: Team abbreviation for opponent:', teamAbbr);
+                if (teamAbbr) {
+                    gamesVsOpponent = await executeQuery(
+                        `SELECT * FROM player_game_logs WHERE player_id = $1 AND opponent = $2 ORDER BY game_date DESC LIMIT $3`,
+                        [player.player_id, teamAbbr, limit]
+                    );
+                }
+            }
+            console.log('DEBUG: Last 5 games vs opponent:', gamesVsOpponent);
+
+            // Helper to calculate average
+            function avgStat(games, key) {
+                if (!games.length) return null;
+                const values = games.map(g => g[key]);
+                console.log('DEBUG: Stat values for averaging:', key, values);
+                return values.reduce((sum, v) => sum + (v || 0), 0) / games.length;
+            }
+
+            const avgOverall = avgStat(gamesOverall, statLabel);
+            const avgVsOpponent = avgStat(gamesVsOpponent, statLabel);
+            let prediction = null;
+            let usedAverages = [];
+
+            if (avgOverall !== null && avgVsOpponent !== null) {
+                prediction = (avgOverall + avgVsOpponent) / 2;
+                usedAverages = [
+                    `last ${limit} games overall (${avgOverall.toFixed(1)} ${statLabel})`,
+                    `last ${limit} games vs. the ${analysis.team_name} (${avgVsOpponent.toFixed(1)} ${statLabel})`
+                ];
+            } else if (avgVsOpponent !== null) {
+                prediction = avgVsOpponent;
+                usedAverages = [
+                    `last ${limit} games vs. the ${analysis.team_name} (${avgVsOpponent.toFixed(1)} ${statLabel})`
+                ];
+            } else if (avgOverall !== null) {
+                prediction = avgOverall;
+                usedAverages = [
+                    `last ${limit} games overall (${avgOverall.toFixed(1)} ${statLabel})`
+                ];
+            }
+
+            if (prediction === null) {
+                return res.status(404).json({
+                    error: `Not enough data to make a prediction for ${player.full_name}`
+                });
+            }
+
+            // Format chatbot message
+            let message = `Prediction for ${player.full_name}'s next game`;
+            if (analysis.team_name) {
+                message += ` vs. the ${analysis.team_name}`;
+            }
+            message += `:\n\n`;
+            message += `**Projected ${statLabel}: ${prediction.toFixed(1)}**\n`;
+            message += `\nBased on ${usedAverages.join(' and ')}.`;
+
+            return res.json({
+                answer: message,
+                prediction: prediction.toFixed(1),
+                stat: statLabel,
+                player: player.full_name,
+                gamesOverall,
+                gamesVsOpponent
+            });
+        }
 
         if (analysis.player_name) {
             const player = await findPlayerId(analysis.player_name);
