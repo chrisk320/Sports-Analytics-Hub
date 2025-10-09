@@ -51,6 +51,7 @@ export default function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [allTeams, setAllTeams] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('nba-player-stats');
 
   useEffect(() => {
     if (user) {
@@ -193,38 +194,53 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 font-sans text-white flex flex-col">
-      <Header isLoading={isLoading} user={user} setToken={setToken} />
+      <Header isLoading={isLoading} user={user} setToken={setToken} activeSection={activeSection} setActiveSection={setActiveSection} />
 
       <main className="w-screen px-4 sm:px-6 lg:px-8 py-8 flex-grow">
-        <div className="space-y-12">
-          <SearchBar
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-            searchResults={searchResults}
-            onAddPlayer={handleAddPlayer}
-          />
+        {activeSection === 'nba-player-stats' && (
+          <div className="space-y-12">
+            <SearchBar
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              searchResults={searchResults}
+              onAddPlayer={handleAddPlayer}
+            />
 
-          <div className="w-full">
-            <h2 className="text-3xl font-bold text-center mb-8">My Players</h2>
-            {selectedPlayers.length > 0 ? (
-              <div className="flex flex-wrap justify-center gap-8">
-                {selectedPlayers.map(player => (
-                  <PlayerCard
-                    key={player.player_id}
-                    player={player}
-                    onSelect={handleSelectPlayer}
-                    onRemove={handleRemovePlayer}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
-                <p className="text-lg">Your dashboard is empty.</p>
-                <p>Search for a player to add them to your list.</p>
-              </div>
-            )}
+            <div className="w-full">
+              <h2 className="text-3xl font-bold text-center mb-8">NBA Player Stats</h2>
+              {selectedPlayers.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-8">
+                  {selectedPlayers.map(player => (
+                    <PlayerCard
+                      key={player.player_id}
+                      player={player}
+                      onSelect={handleSelectPlayer}
+                      onRemove={handleRemovePlayer}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
+                  <p className="text-lg">Your dashboard is empty.</p>
+                  <p>Search for a player to add them to your list.</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeSection === 'nba-team-bets' && (
+          <div className="text-center text-gray-400">NBA Team Bets (coming soon)</div>
+        )}
+        {activeSection === 'nfl-team-bets' && (
+          <div className="text-center text-gray-400">NFL Team Bets (coming soon)</div>
+        )}
+        {activeSection === 'nba-player-props' && (
+          <div className="text-center text-gray-400">NBA Player Props (coming soon)</div>
+        )}
+        {activeSection === 'nfl-player-props' && (
+          <div className="text-center text-gray-400">NFL Player Props (coming soon)</div>
+        )}
 
         {/* Chat Button */}
         <button
