@@ -42,39 +42,43 @@ async function getNFLEventIds() {
     const start_date = getTodaysDateISO();
     const end_date = getEndDateISO();
     try {
-        const resopnse = await axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events?${process.env.ODDS_API_KEY}`, {
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events?apiKey=${process.env.ODDS_API_KEY}`, {
             params: {
                 dateFormat: 'iso',
                 commenceTimeFrom: start_date,
                 commenceTimeTo: end_date
             }
         });
+        return response.data;
     } catch (error) {
         console.error('Error fetching event Ids:', error);
-        res.status(500).json({ error: 'Failed to fetch team lines '});
+        res.status(500).json({ error: 'Failed to fetch event ids'});
     }
 };
 
 export const getNFLPlayerProps = async (req, res) => {
-    const start_date = getTodaysDateISO();
-    const end_date = getEndDateISO();
-    const data = getNFLEventIds();
+    const data = await getNFLEventIds();
     try {
-        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events/`, {
-            params: {
-                apiKey: process.env.ODDS_API_KEY,
-                regions: 'us,us2,us_dfs',
-                markets:'player_pass_yds,player_rush_yds,player_reception_yds',
-                bookmakers: 'draftkings,fanduel,betmgm,betus,espnbet,prizepicks,underdog',
-                oddsFormat: 'american',
-                dateFormat: 'iso',
-                commenceTimeFrom: start_date,
-                commenceTimeTo: end_date
-            }
+        const promises = data.map(event => {
+            const eventId = event.id
+            return axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events/${eventId}/odds/`, {
+                params: {
+                    apiKey: process.env.ODDS_API_KEY,
+                    regions: 'us,us2,us_dfs',
+                    markets:'player_pass_yds,player_rush_yds,player_reception_yds',
+                    bookmakers: 'draftkings,fanduel,betmgm,betus,espnbet,prizepicks,underdog',
+                    oddsFormat: 'american',
+                    dateFormat: 'iso',
+                }
+            });
         });
-        res.json(response.data);
+        const responses = await Promise.all(promises);
+
+        const allData = responses.map(response => response.data);
+
+        res.json(allData);
     } catch (error) {
         console.error('Error fetching team lines:', error);
-        res.status(500).json({ error: 'Failed to fetch team lines' });
+        res.status(500).json({ error: 'Failed to fetch player props' });
     }
 };
