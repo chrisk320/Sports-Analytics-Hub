@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const getTeamLines = async (req, res) => {
+export const getNBATeamLines = async (req, res) => {
     try {
         const response = await axios.get(`https://api.the-odds-api.com/v4/sports/basketball_nba/odds/`, {
             params: {
