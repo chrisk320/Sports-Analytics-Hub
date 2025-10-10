@@ -26,25 +26,13 @@ const Header = ({ isLoading, user, setToken, activeSection, setActiveSection }) 
             onClick={() => setActiveSection('nba-team-bets')}
             className={`px-4 py-2 rounded-lg transition ${activeSection === 'nba-team-bets' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
           >
-            NBA Team Bets
+            NBA Bets
           </button>
           <button
             onClick={() => setActiveSection('nfl-team-bets')}
             className={`px-4 py-2 rounded-lg transition ${activeSection === 'nfl-team-bets' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
           >
-            NFL Team Bets
-          </button>
-          <button
-            onClick={() => setActiveSection('nba-player-props')}
-            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nba-player-props' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
-          >
-            NBA Player Props
-          </button>
-          <button
-            onClick={() => setActiveSection('nfl-player-props')}
-            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nfl-player-props' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
-          >
-            NFL Player Props
+            NFL Bets
           </button>
         </div>
       </nav>

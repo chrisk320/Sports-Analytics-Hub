@@ -230,16 +230,10 @@ export default function App() {
         )}
 
         {activeSection === 'nba-team-bets' && (
-          <div className="text-center text-gray-400">NBA Team Bets (coming soon)</div>
+          <div className="text-center text-gray-400">NBA Bets (coming soon)</div>
         )}
         {activeSection === 'nfl-team-bets' && (
-          <div className="text-center text-gray-400">NFL Team Bets (coming soon)</div>
-        )}
-        {activeSection === 'nba-player-props' && (
-          <div className="text-center text-gray-400">NBA Player Props (coming soon)</div>
-        )}
-        {activeSection === 'nfl-player-props' && (
-          <div className="text-center text-gray-400">NFL Player Props (coming soon)</div>
+          <div className="text-center text-gray-400">NFL Bets (coming soon)</div>
         )}
 
         {/* Chat Button */}
