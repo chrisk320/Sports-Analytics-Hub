@@ -8,7 +8,7 @@ const Header = ({ isLoading, user, setToken, activeSection, setActiveSection }) 
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <BarChart2 className="w-8 h-8 text-blue-400" />
-          <h1 className="text-2xl font-bold tracking-tight">NBA Stats Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Sports Analytics Hub</h1>
           {isLoading && <Loader className="w-6 h-6 animate-spin text-blue-400" />}
         </div>
         <Login user={user} setToken={setToken} />
