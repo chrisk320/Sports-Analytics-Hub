@@ -38,7 +38,34 @@ export const getNFLTeamLines = async (req, res) => {
     }
 };
 
-async function getNFLEventIds() {
+export const getNFLEventIds = async (req, res) => {
+    const start_date = getTodaysDateISO();
+    const end_date = getEndDateISO();
+    try {
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events?apiKey=${process.env.ODDS_API_KEY}`, {
+            params: {
+                dateFormat: 'iso',
+                commenceTimeFrom: start_date,
+                commenceTimeTo: end_date
+            }
+        });
+        
+        const games = response.data.map(event => ({
+            id: event.id,
+            home_team: event.home_team,
+            away_team: event.away_team,
+            commence_time: event.commence_time,
+            sport_title: event.sport_title
+        }));
+        
+        res.json(games);
+    } catch (error) {
+        console.error('Error fetching NFL event IDs:', error);
+        res.status(500).json({ error: 'Failed to fetch NFL event IDs'});
+    }
+};
+
+async function fetchNFLEventIds() {
     const start_date = getTodaysDateISO();
     const end_date = getEndDateISO();
     try {
@@ -51,13 +78,13 @@ async function getNFLEventIds() {
         });
         return response.data;
     } catch (error) {
-        console.error('Error fetching event Ids:', error);
-        res.status(500).json({ error: 'Failed to fetch event ids'});
+        console.error('Error fetching NFL event IDs:', error);
+        throw error;
     }
-};
+}
 
 export const getNFLPlayerProps = async (req, res) => {
-    const data = await getNFLEventIds();
+    const data = await fetchNFLEventIds();
     try {
         const promises = data.map(event => {
             const eventId = event.id
