@@ -7,6 +7,6 @@ router.get('/', getNFLTeamLines);
 
 router.get('/nflgames', getNFLEventIds);
 
-router.get('/playerprops', getNFLPlayerProps);
+router.get('/nflplayerprops', getNFLPlayerProps);
 
 export default router;
