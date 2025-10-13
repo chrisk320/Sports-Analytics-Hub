@@ -3,6 +3,7 @@ import axios from 'axios';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import PlayerCard from './components/PlayerCard';
+import TeamCard from './components/TeamCard';
 import StatsModal from './components/StatsModal';
 import ChatBot from './components/ChatBot';
 
@@ -50,6 +51,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [allTeams, setAllTeams] = useState([]);
+  const [nflGames, setNflGames] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('nba-player-stats');
 
@@ -87,6 +89,18 @@ export default function App() {
       }
     };
     fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    const fetchNFLGames = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/nflbets/nflgames`);
+        setNflGames(response.data);
+      } catch (error) {
+        console.error("Failed to fetch NFL games:", error);
+      }
+    };
+    fetchNFLGames();
   }, []);
 
   const handleSearchChange = (e) => {
@@ -233,7 +247,26 @@ export default function App() {
           <div className="text-center text-gray-400">NBA Bets (coming soon)</div>
         )}
         {activeSection === 'nfl-team-bets' && (
-          <div className="text-center text-gray-400">NFL Bets (coming soon)</div>
+          <div className="space-y-12">
+            <div className="w-full">
+              <h2 className="text-3xl font-bold text-center mb-8">NFL Team Bets</h2>
+              {nflGames.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {nflGames.map(game => (
+                    <TeamCard
+                      key={game.id}
+                      game={game}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
+                  <p className="text-lg">No NFL games available.</p>
+                  <p>Games will appear here when available.</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Chat Button */}
