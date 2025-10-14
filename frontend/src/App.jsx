@@ -122,7 +122,7 @@ export default function App() {
 
     // If "All Teams" is selected, reset the display logs to the original recent games
     if (opponentAbbr === 'ALL') {
-      setActivePlayerData(prevData => ({
+      setActiveNBAPlayerData(prevData => ({
         ...prevData,
         displayGameLogs: prevData.recentGameLogs
       }));
@@ -133,7 +133,7 @@ export default function App() {
     try {
       const response = await axios.get(`${API_BASE_URL}/players/${playerId}/gamelogs/${opponentAbbr}`);
       // ** THE FIX: Only update the displayGameLogs, leave recentGameLogs untouched **
-      setActivePlayerData(prevData => ({
+      setActiveNBAPlayerData(prevData => ({
         ...prevData,
         displayGameLogs: response.data
       }));
@@ -197,6 +197,22 @@ export default function App() {
     }
   };
 
+  const handleSelectNFLGame = async (game) => {
+    setActiveNFLGame(game);
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/nflbets/nflteamlines/${game.id}`);
+      setActiveNFLGame({
+        teamLines: response.data,
+      })
+    } catch (error) {
+      console.error("Failed to fetch NFL game details:", error);
+      setActiveNFLGame({ teamLines: [] });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const handleCloseModal = () => {
     setActiveNBAPlayer(null);
     setActiveNBAPlayerData(null);
@@ -257,6 +273,7 @@ export default function App() {
                     <TeamCard
                       key={game.id}
                       game={game}
+                      onSelect={handleSelectNFLGame}
                     />
                   ))}
                 </div>
