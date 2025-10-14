@@ -38,6 +38,26 @@ export const getNFLTeamLines = async (req, res) => {
     }
 };
 
+export const getNFLTeamLinesByEventId = async (req, res) => {
+    const { eventId } = req.params;
+    try {
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events/${eventId}/odds/`, {
+            params: {
+                apiKey: process.env.ODDS_API_KEY,
+                regions: 'us,us2',
+                markets: 'h2h,spreads,totals',
+                bookmakers: 'draftkings,fanduel,betmgm,betus,espnbet',
+                oddsFormat: 'american',
+                dateFormat: 'iso',
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching team lines by event ID:', error);
+        res.status(500).json({ error: 'Failed to fetch team lines by event ID' });
+    }
+}
+
 export const getNFLEventIds = async (req, res) => {
     const start_date = getTodaysDateISO();
     const end_date = getEndDateISO();
