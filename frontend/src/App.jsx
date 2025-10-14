@@ -41,8 +41,8 @@ export default function App() {
 
   const [allPlayers, setAllPlayers] = useState([]);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
-  const [activePlayer, setActivePlayer] = useState(null);
-  const [activePlayerData, setActivePlayerData] = useState({
+  const [activeNBAPlayer, setActiveNBAPlayer] = useState(null);
+  const [activeNBAPlayerData, setActiveNBAPlayerData] = useState({
     seasonAverages: null,
     recentGameLogs: [],
     displayGameLogs: [],
@@ -54,6 +54,7 @@ export default function App() {
   const [nflGames, setNflGames] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('nba-player-stats');
+  const [activeNFLGame, setActiveNFLGame] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -176,29 +177,29 @@ export default function App() {
   };
 
   const handleSelectPlayer = async (player) => {
-    setActivePlayer(player);
+    setActiveNBAPlayer(player);
     setIsLoading(true);
     try {
       const [averagesRes, gameLogsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/players/${player.player_id}/season-averages`),
         axios.get(`${API_BASE_URL}/players/${player.player_id}/full-gamelogs`)
       ]);
-      setActivePlayerData({
+      setActiveNBAPlayerData({
         seasonAverages: averagesRes.data,
         recentGameLogs: gameLogsRes.data,
         displayGameLogs: gameLogsRes.data,
       });
     } catch (error) {
       console.error("Failed to fetch player details:", error);
-      setActivePlayerData({ seasonAverages: null, recentGameLogs: [], displayGameLogs: [] });
+      setActiveNBAPlayerData({ seasonAverages: null, recentGameLogs: [], displayGameLogs: [] });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCloseModal = () => {
-    setActivePlayer(null);
-    setActivePlayerData(null);
+    setActiveNBAPlayer(null);
+    setActiveNBAPlayerData(null);
   };
 
   useEffect(() => {
@@ -282,8 +283,8 @@ export default function App() {
       </main>
 
       <StatsModal
-        player={activePlayer}
-        playerData={activePlayerData}
+        player={activeNBAPlayer}
+        playerData={activeNBAPlayerData}
         isLoading={isLoading}
         onClose={handleCloseModal}
         allTeams={allTeams}
