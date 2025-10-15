@@ -129,3 +129,23 @@ export const getNFLPlayerProps = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch player props' });
     }
 };
+
+export const getNFLPlayerPropsByEventId = async (req, res) => {
+    const { eventId } = req.params;
+    try {
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/events/${eventId}/odds/`, {
+            params: {
+                apiKey: process.env.ODDS_API_KEY,
+                regions: 'us,us2,us_dfs',
+                markets:'player_pass_yds,player_rush_yds,player_reception_yds',
+                bookmakers: 'draftkings,fanduel,betmgm,betus,espnbet,prizepicks,underdog',
+                oddsFormat: 'american',
+                dateFormat: 'iso',
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching player props by event ID:', error);
+        res.status(500).json({ error: 'Failed to fetch player props by event ID' });
+    }
+};
