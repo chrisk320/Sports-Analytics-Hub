@@ -6,6 +6,7 @@ import PlayerCard from './components/PlayerCard';
 import TeamCard from './components/TeamCard';
 import StatsModal from './components/StatsModal';
 import ChatBot from './components/ChatBot';
+import NFLGameModal from './components/NFLGameModal';
 
 const API_BASE_URL = 'http://localhost:5000';
 
@@ -55,6 +56,10 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('nba-player-stats');
   const [activeNFLGame, setActiveNFLGame] = useState(null);
+  const [activeNFLGameLines, setActiveNFLGameLines] = useState({
+    teamLines: [],
+    playerProps: [],
+  });
 
   useEffect(() => {
     if (user) {
@@ -201,13 +206,18 @@ export default function App() {
     setActiveNFLGame(game);
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/nflbets/nflteamlines/${game.id}`);
-      setActiveNFLGame({
-        teamLines: response.data,
-      })
+      const [teamLinesRes, playerPropsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/nflbets/nflteamlines/${game.id}`),
+        axios.get(`${API_BASE_URL}/nflbets/nflplayerprops/${game.id}`)
+      ]);
+      setActiveNFLGameLines({
+        teamLines: teamLinesRes.data,
+        playerProps: playerPropsRes.data,
+      });
     } catch (error) {
       console.error("Failed to fetch NFL game details:", error);
-      setActiveNFLGame({ teamLines: [] });
+      setActiveNFLGame(null);
+      setActiveNFLGameLines({ teamLines: [], playerProps: [] });
     } finally {
       setIsLoading(false);
     }
@@ -216,6 +226,8 @@ export default function App() {
   const handleCloseModal = () => {
     setActiveNBAPlayer(null);
     setActiveNBAPlayerData(null);
+    setActiveNFLGame(null);
+    setActiveNFLGameLines({ teamLines: [], playerProps: [] });
   };
 
   useEffect(() => {
@@ -306,6 +318,13 @@ export default function App() {
         onClose={handleCloseModal}
         allTeams={allTeams}
         onFilter={handleFilterByOpponent}
+      />
+
+      <NFLGameModal
+        game={activeNFLGame}
+        gameLines={activeNFLGameLines}
+        isLoading={isLoading}
+        onClose={handleCloseModal}
       />
 
       <ChatBot 
