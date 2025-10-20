@@ -10,7 +10,7 @@ function getEndDateISO() {
     const today = new Date();
     const end_date = new Date(today);
 
-    end_date.setDate(today.getDate() + 14);
+    end_date.setDate(today.getDate() + 7);
     const formatted_date = end_date.toISOString().split('.')[0] + 'Z';
     return formatted_date;
 }
@@ -112,11 +112,10 @@ export const getNBAPlayerProps = async (req, res) => {
                 params: {
                     apiKey: process.env.ODDS_API_KEY,
                     regions: 'us,us2',
-                    markets: 'h2h,spreads,totals',
+                    markets: 'player_points,player_rebounds,player_assists,player_points_rebounds,player_points_assists,player_rebounds_assists',
                     bookmakers: 'draftkings,fanduel,betmgm,betus,fanatics,espnbet',
                     oddsFormat: 'american',
-                    commenceTimeFrom: start_date,
-                    commenceTimeTo: end_date
+                    dateFormat: 'iso',
                 }
             });
         });
@@ -136,12 +135,13 @@ export const getNBAPlayerPropsByEventId = async (req, res) => {
             params: {
                 apiKey: process.env.ODDS_API_KEY,
                 regions: 'us,us2',
-                markets: 'h2h,spreads,totals',
-                bookmakers: 'draftkings,fanduel,betmgm,betus,fanatics,espnbet',
+                markets: 'player_points,player_rebounds,player_assists,player_points_rebounds,player_points_assists,player_rebounds_assists',
+                bookmakers: 'draftkings,fanduel,betmgm,betus,fanatics,espnbet,prizepicks,underdog',
                 oddsFormat: 'american',
                 dateFormat: 'iso',
             }
         });
+        res.json(response.data);
     } catch (error) {
         console.error('Error fetching player props by event ID:', error);
         res.status(500).json({ error: 'Failed to fetch player props by event ID' });
