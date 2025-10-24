@@ -169,7 +169,7 @@ const main = async () => {
             const res = await client.query(topPlayersQuery);
             const topPlayersToScrape = res.rows;
 
-            const seasonsToProcess = ['2024-25', '2023-24', '2022-23', '2021-22', '2020-21', '2019-20'];
+            const seasonsToProcess = ['2025-26'];
 
             console.log(`Found ${topPlayersToScrape.length} top players to scrape for seasons: ${seasonsToProcess.join(', ')}.`);
 
