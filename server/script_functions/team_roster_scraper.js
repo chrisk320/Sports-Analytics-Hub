@@ -39,6 +39,18 @@ const setupDatabase = async () => {
             }
         }
         
+        try {
+            await client.query(`
+                ALTER TABLE players 
+                ADD COLUMN IF NOT EXISTS team_abbreviation VARCHAR(5);
+            `);
+            console.log('✅ "team_abbreviation" column ensured in "players" table.');
+        } catch (err) {
+            if (err.code !== '42701') {
+                console.warn(`Could not add team_abbreviation column, it might already exist. Error: ${err.message}`);
+            }
+        }
+        
         await client.query(`
             CREATE TABLE IF NOT EXISTS teams (
               team_id BIGINT PRIMARY KEY,
@@ -64,45 +76,160 @@ const scrapeTeamRoster = async (browser, team) => {
     
     try {
         await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36');
-        await page.goto(rosterUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        console.log(`Navigating to ${team.team_name} roster page...`);
+        await page.goto(rosterUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+        
+        // Wait a bit for any dynamic content to load
+        await sleep(2000);
         
         try {
             await page.waitForSelector('#onetrust-accept-btn-handler', { timeout: 5000 });
             await page.click('#onetrust-accept-btn-handler');
+            await sleep(1000);
         } catch (e) {
+            // Cookie consent not found or already handled
         }
         
-        const containerSelector = 'div[class*="TeamRoster_tableContainer"]'; 
-        await page.waitForSelector(containerSelector, { timeout: 30000 });
+        // Try multiple selectors for the roster container
+        const containerSelectors = [
+            'div[class*="TeamRoster_tableContainer"]',
+            'div[class*="Roster_tableContainer"]',
+            'table[class*="Roster"]',
+            'div[class*="roster"] table',
+            'table tbody tr'
+        ];
+        
+        let containerSelector = null;
+        for (const selector of containerSelectors) {
+            try {
+                await page.waitForSelector(selector, { timeout: 5000 });
+                containerSelector = selector;
+                console.log(`Found roster container for ${team.team_name} using selector: ${selector}`);
+                break;
+            } catch (e) {
+                // Try next selector
+            }
+        }
+        
+        if (!containerSelector) {
+            // Last resort: try to find any table with player links
+            const hasTable = await page.evaluate(() => {
+                const links = document.querySelectorAll('a[href*="/player/"]');
+                return links.length > 0;
+            });
+            
+            if (!hasTable) {
+                console.error(`❌ Could not find roster table for ${team.team_name}. URL: ${rosterUrl}`);
+                return [];
+            }
+            // Use a more generic selector
+            containerSelector = 'body';
+        }
 
         await page.evaluate((selector) => {
-            document.querySelector(selector)?.scrollIntoView({ block: 'center' });
+            const element = document.querySelector(selector);
+            if (element) {
+                element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
         }, containerSelector);
+        
+        // Wait a bit for any lazy-loaded content
+        await sleep(2000);
 
-        const dataSelector = 'td.primary.text a[href*="/player/"]';
-        await page.waitForSelector(dataSelector, { timeout: 15000 });
+        // Try to find player links with multiple strategies
+        const dataSelectors = [
+            'td.primary.text a[href*="/player/"]',
+            'a[href*="/player/"]',
+            'tbody tr td a[href*="/player/"]'
+        ];
+        
+        let foundLinks = false;
+        for (const dataSelector of dataSelectors) {
+            try {
+                await page.waitForSelector(dataSelector, { timeout: 5000 });
+                foundLinks = true;
+                break;
+            } catch (e) {
+                // Try next selector
+            }
+        }
+        
+        if (!foundLinks) {
+            // Check if links exist at all
+            const hasLinks = await page.evaluate(() => {
+                return document.querySelectorAll('a[href*="/player/"]').length > 0;
+            });
+            
+            if (!hasLinks) {
+                console.error(`❌ No player links found for ${team.team_name}`);
+                return [];
+            }
+        }
         
         const result = await page.evaluate((selector) => {
             const players = [];
+            
+            // First try: look for table rows
+            let rows = [];
             const tableContainer = document.querySelector(selector);
             
-            if (!tableContainer) {
-                return { error: 'Table container not found' };
-            }
-
-            const rows = tableContainer.querySelectorAll('tbody tr');
-            if (rows.length === 0) {
-                return { error: 'No player rows found' };
+            if (tableContainer && selector !== 'body') {
+                rows = tableContainer.querySelectorAll('tbody tr');
+                if (rows.length === 0) {
+                    rows = tableContainer.querySelectorAll('tr');
+                }
             }
             
+            // If no rows found, try to find all player links directly
+            if (rows.length === 0) {
+                const allPlayerLinks = document.querySelectorAll('a[href*="/player/"]');
+                const seenIds = new Set();
+                
+                allPlayerLinks.forEach((link) => {
+                    const href = link.getAttribute('href');
+                    if (href) {
+                        const hrefParts = href.split('/');
+                        const playerId = hrefParts[2];
+                        const fullName = link.innerText.trim();
+                        
+                        if (playerId && /^\d+$/.test(playerId) && fullName && !seenIds.has(playerId)) {
+                            seenIds.add(playerId);
+                            players.push({
+                                player_id: parseInt(playerId, 10),
+                                full_name: fullName
+                            });
+                        }
+                    }
+                });
+                
+                return { players };
+            }
+            
+            // Process table rows
             rows.forEach((row) => {
                 const primaryCell = row.querySelector('td.primary.text');
                 const playerLink = primaryCell ? primaryCell.querySelector('a[href*="/player/"]') : null;
                 
-                if (playerLink) {
+                // Fallback: look for any player link in the row
+                if (!playerLink) {
+                    const anyLink = row.querySelector('a[href*="/player/"]');
+                    if (anyLink) {
+                        const href = anyLink.getAttribute('href');
+                        const hrefParts = href.split('/');
+                        const playerId = hrefParts[2];
+                        const fullName = anyLink.innerText.trim();
+                        
+                        if (playerId && /^\d+$/.test(playerId) && fullName) {
+                            players.push({
+                                player_id: parseInt(playerId, 10),
+                                full_name: fullName
+                            });
+                        }
+                    }
+                } else {
                     const href = playerLink.getAttribute('href');
                     const hrefParts = href.split('/');
-                    const playerId = hrefParts[2]; 
+                    const playerId = hrefParts[2];
                     const fullName = playerLink.innerText.trim();
 
                     if (playerId && /^\d+$/.test(playerId) && fullName) {
@@ -148,11 +275,16 @@ const main = async () => {
     
     try {
         const teamsQuery = TEST_MODE 
-            ? 'SELECT team_id, url_slug, team_name FROM teams LIMIT 1'
-            : 'SELECT team_id, url_slug, team_name FROM teams';
+            ? 'SELECT team_id, url_slug, team_name, team_abbreviation FROM teams LIMIT 1'
+            : 'SELECT team_id, url_slug, team_name, team_abbreviation FROM teams';
             
         const teamsResult = await client.query(teamsQuery);
         const teamsToProcess = teamsResult.rows;
+        
+        // Reset all players' team_abbreviation to NULL before processing
+        // This handles players who are no longer in the league
+        await client.query('UPDATE players SET team_abbreviation = NULL');
+        console.log('✅ Reset all players\' team_abbreviation to NULL.');
         
         if (teamsToProcess.length === 0) {
             console.error('❌ No teams found in the "teams" table. Please run your team seeding script first.');
@@ -166,7 +298,8 @@ const main = async () => {
             
             const playersWithHeadshots = players.map(player => ({
                 ...player,
-                headshot_url: `https://cdn.nba.com/headshots/nba/latest/1040x760/${player.player_id}.png`
+                headshot_url: `https://cdn.nba.com/headshots/nba/latest/1040x760/${player.player_id}.png`,
+                team_abbreviation: team.team_abbreviation
             }));
 
             if (TEST_MODE) {
@@ -183,14 +316,15 @@ const main = async () => {
                     
                     for (const player of playersWithHeadshots) {
                         const query = `
-                            INSERT INTO players (player_id, full_name, headshot_url)
-                            VALUES ($1, $2, $3)
+                            INSERT INTO players (player_id, full_name, headshot_url, team_abbreviation)
+                            VALUES ($1, $2, $3, $4)
                             ON CONFLICT (player_id) 
                             DO UPDATE SET 
                                 full_name = EXCLUDED.full_name,
-                                headshot_url = EXCLUDED.headshot_url;
+                                headshot_url = EXCLUDED.headshot_url,
+                                team_abbreviation = EXCLUDED.team_abbreviation;
                         `;
-                        await client.query(query, [player.player_id, player.full_name, player.headshot_url]);
+                        await client.query(query, [player.player_id, player.full_name, player.headshot_url, team.team_abbreviation]);
                     }
                     console.log(`✅ ${team.team_name} completed.`);
                 }
