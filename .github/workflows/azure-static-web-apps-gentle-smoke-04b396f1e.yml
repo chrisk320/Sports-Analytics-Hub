@@ -33,6 +33,7 @@ jobs:
           output_location: "dist" # Built app content directory - optional
         env: # <--- ADD THIS ENTIRE BLOCK
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
