@@ -1,0 +1,8 @@
+{
+  "name": "azure-root-pointer",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "cd server && npm install",
+    "start": "cd server && npm start"
+  }
+}
