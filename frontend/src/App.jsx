@@ -23,7 +23,7 @@ export default function App() {
       localStorage.setItem('authToken', JSON.stringify(token));
 
       // Fetch user profile
-      axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token.access_token}`, {
+      axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
         headers: {
           Authorization: `Bearer ${token.access_token}`,
           Accept: 'application/json'
