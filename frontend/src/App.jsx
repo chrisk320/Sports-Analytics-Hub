@@ -66,7 +66,7 @@ export default function App() {
       const fetchFavorites = async () => {
         try {
           setIsLoading(true);
-          const response = await axios.get(`${API_BASE_URL}/users/${user.id}/favorites`);
+          const response = await axios.get(`${API_BASE_URL}/users/${user.sub}/favorites`);
           setSelectedPlayers(response.data);
         } catch (error) {
           console.error("Failed to fetch favorite players:", error);
@@ -137,7 +137,6 @@ export default function App() {
     setIsLoading(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/players/${playerId}/gamelogs/${opponentAbbr}`);
-      // ** THE FIX: Only update the displayGameLogs, leave recentGameLogs untouched **
       setActiveNBAPlayerData(prevData => ({
         ...prevData,
         displayGameLogs: response.data
