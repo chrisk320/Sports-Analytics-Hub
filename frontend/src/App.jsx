@@ -156,7 +156,7 @@ export default function App() {
     if (!selectedPlayers.find(p => p.player_id === player.player_id)) {
       setSelectedPlayers(prev => [...prev, player]);
       try {
-        await axios.post(`${API_BASE_URL}/users/${user.id}/favorites`, { playerId: player.player_id });
+        await axios.post(`${API_BASE_URL}/users/${user.sub}/favorites`, { playerId: player.player_id });
       } catch (error) {
         console.error("Failed to save favorite:", error);
         // Optional: remove player from UI if DB save fails
@@ -173,7 +173,7 @@ export default function App() {
     const originalPlayers = [...selectedPlayers];
     setSelectedPlayers(prev => prev.filter(p => p.player_id !== playerId));
     try {
-      await axios.delete(`${API_BASE_URL}/users/${user.id}/favorites/${playerId}`);
+      await axios.delete(`${API_BASE_URL}/users/${user.sub}/favorites/${playerId}`);
     } catch (error) {
       console.error("Failed to remove favorite:", error);
       setSelectedPlayers(originalPlayers); // Revert UI on error
