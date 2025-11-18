@@ -1,14 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
 import stats from './routes/stats.routes.js';
 import userFavorites from './routes/user.routes.js';
 import teams from './routes/teams.routes.js';
 import chat from './routes/chat.routes.js';
 import nbabets from './routes/nbabets.routes.js';
 import nflbets from './routes/nflbets.routes.js';
-dotenv.config({ path: './server/.env' });
+dotenv.config();
 
 const app = express();
 
