@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "scripts": {
     "postinstall": "cd server && npm install",
-    "start": "cd server && npm start"
+    "start": "node server/server.js"
   }
 }
