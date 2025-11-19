@@ -16,6 +16,7 @@ export const getPlayers = async (req, res) => {
         res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error fetchign player list', err.stack);
+        res.status(500).send('Server Error');
     }
 }
 
