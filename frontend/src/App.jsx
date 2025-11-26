@@ -8,7 +8,7 @@ import StatsModal from './components/StatsModal';
 import ChatBot from './components/ChatBot';
 import NFLGameModal from './components/NFLGameModal';
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'https://sports-analytics-hub-7hse.onrender.com';
 
 export default function App() {
   const [token, setToken] = useState(() => {
