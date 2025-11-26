@@ -6,11 +6,8 @@ dotenv.config();
 
 const { Pool } = pg;
 const pool = new Pool({
-    user: 'christiankim',
-    host: 'localhost',
-    database: 'nba_stats',
-    password: '',
-    port: 5432,
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
 const openai = new OpenAI({

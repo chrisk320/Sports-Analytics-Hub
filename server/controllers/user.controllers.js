@@ -1,12 +1,12 @@
 import pg from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const { Pool } = pg;
 const pool = new Pool({
-    user: 'christiankim',
-    host: 'localhost',
-    database: 'nba_stats',
-    password: '',
-    port: 5432,
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
 export const getFavorites = async (req, res) => {
