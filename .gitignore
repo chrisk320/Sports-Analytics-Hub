@@ -2,6 +2,12 @@
 **/node_modules
 **/.puppeteer-cache
 
+#Python
+**/server/python_scripts/venv
+__pycache__/
+*.pyc
+*.pyo
+
 # Environment variables
 # Never commit your database passwords or API keys!
 .env
