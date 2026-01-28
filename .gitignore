@@ -17,5 +17,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Generated data
+server/data/player_ids.json
+
 # macOS specific
 .DS_Store

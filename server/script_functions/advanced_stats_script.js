@@ -19,8 +19,7 @@ const setupDatabase = async () => {
     console.log('Verifying database tables...');
     const createTableQuery = `
     CREATE TABLE IF NOT EXISTS advanced_box_scores (
-      advanced_box_score_id SERIAL PRIMARY KEY,
-      game_log_id INT UNIQUE REFERENCES player_game_logs(game_log_id) ON DELETE CASCADE,
+      game_log_id INT PRIMARY KEY REFERENCES player_game_logs(game_log_id) ON DELETE CASCADE,
       offensive_rating REAL,
       defensive_rating REAL,
       net_rating REAL,
