@@ -21,8 +21,9 @@ npm run preview    # Preview production build
 npm run start      # Start with nodemon (auto-restart)
 
 # Python scripts (from /server/python_scripts)
-python fetch_team_rosters_and_logs.py
-python fetch_todays_stats.py
+source venv/bin/activate
+python fetch_team_rosters_and_logs.py        # Fetch rosters + traditional game logs
+python fetch_all_players_advanced_box_scores.py  # Fetch advanced stats (run after above)
 ```
 
 ## Project Structure
@@ -73,6 +74,7 @@ Sports-Analytics-Hub/
 │   │   └── top_players_by_*.js
 │   ├── python_scripts/         # NBA API data fetchers
 │   │   ├── fetch_team_rosters_and_logs.py
+│   │   ├── fetch_all_players_advanced_box_scores.py
 │   │   ├── fetch_todays_stats.py
 │   │   └── requirements.txt
 │   ├── backtest.js             # Betting model evaluation
@@ -100,7 +102,7 @@ Sports-Analytics-Hub/
 | `players` | Player master data | player_id (PK), full_name, headshot_url, team_abbreviation |
 | `player_season_stats` | Season averages | stat_id (PK), player_id (FK), season, points_avg, rebounds_avg, assists_avg |
 | `player_game_logs` | Game-by-game stats | game_log_id (PK), player_id (FK), game_date, opponent, pts, reb, ast, stl, blk |
-| `advanced_box_scores` | Advanced metrics | game_log_id (FK), offensive_rating, defensive_rating, usage_percentage, true_shooting_percentage |
+| `advanced_box_scores` | Advanced metrics | game_log_id (PK/FK), offensive_rating, defensive_rating, usage_percentage, true_shooting_percentage |
 | `user_favorites` | User favorites | user_id, player_id |
 | `teams` | NBA teams | team_name, team_abbreviation |
 
@@ -202,8 +204,9 @@ node script_functions/advanced_stats_script.js
 ### Running Python data fetchers
 ```bash
 cd server/python_scripts
-source venv/bin/activate  # if using virtualenv
-python fetch_team_rosters_and_logs.py
+source venv/bin/activate
+python fetch_team_rosters_and_logs.py           # Step 1: populates players + game logs
+python fetch_all_players_advanced_box_scores.py # Step 2: populates advanced stats
 ```
 
 ## Testing
