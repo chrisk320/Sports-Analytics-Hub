@@ -24,6 +24,7 @@ npm run start      # Start with nodemon (auto-restart)
 source venv/bin/activate
 python fetch_team_rosters_and_logs.py        # Fetch rosters + traditional game logs
 python fetch_all_players_advanced_box_scores.py  # Fetch advanced stats (run after above)
+python fetch_yesterdays_games.py             # Nightly: fetch yesterday's games only
 ```
 
 ## Project Structure
@@ -75,6 +76,7 @@ Sports-Analytics-Hub/
 │   ├── python_scripts/         # NBA API data fetchers
 │   │   ├── fetch_team_rosters_and_logs.py
 │   │   ├── fetch_all_players_advanced_box_scores.py
+│   │   ├── fetch_yesterdays_games.py
 │   │   ├── fetch_todays_stats.py
 │   │   └── requirements.txt
 │   ├── backtest.js             # Betting model evaluation
@@ -207,6 +209,7 @@ cd server/python_scripts
 source venv/bin/activate
 python fetch_team_rosters_and_logs.py           # Step 1: populates players + game logs
 python fetch_all_players_advanced_box_scores.py # Step 2: populates advanced stats
+python fetch_yesterdays_games.py                # Nightly: fetches yesterday's games + advanced stats
 ```
 
 ## Testing
