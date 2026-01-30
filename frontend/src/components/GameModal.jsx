@@ -56,7 +56,7 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
                                                 {bookmaker.markets.find(m => m.key === 'h2h') && (
                                                     <div className="mb-4">
-                                                        <h5 className="text-sm font-medium text-gray-300 mb-2">Moneyline</h5>
+                                                        <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">Moneyline</h5>
                                                         <div className="space-y-1">
                                                             {bookmaker.markets.find(m => m.key === 'h2h').outcomes.map((outcome, index) => (
                                                                 <div key={index} className="flex justify-between text-sm">
@@ -72,7 +72,7 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
                                                 {bookmaker.markets.find(m => m.key === 'spreads') && (
                                                     <div className="mb-4">
-                                                        <h5 className="text-sm font-medium text-gray-300 mb-2">Spread</h5>
+                                                        <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">Spread</h5>
                                                         <div className="space-y-1">
                                                             {bookmaker.markets.find(m => m.key === 'spreads').outcomes.map((outcome, index) => (
                                                                 <div key={index} className="flex justify-between text-sm">
@@ -90,7 +90,7 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
                                                 {bookmaker.markets.find(m => m.key === 'totals') && (
                                                     <div>
-                                                        <h5 className="text-sm font-medium text-gray-300 mb-2">Total</h5>
+                                                        <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">Total</h5>
                                                         <div className="space-y-1">
                                                             {bookmaker.markets.find(m => m.key === 'totals').outcomes.map((outcome, index) => (
                                                                 <div key={index} className="flex justify-between text-sm">
