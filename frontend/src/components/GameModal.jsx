@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-const NFLGameModal = ({ game, gameLines, isLoading, onClose }) => {
+const GameModal = ({ game, gameLines, isLoading, onClose }) => {
     if (!game) return null;
 
     const formatOdds = (price) => {
@@ -53,7 +53,7 @@ const NFLGameModal = ({ game, gameLines, isLoading, onClose }) => {
                                                 <h4 className="text-lg font-semibold text-white mb-3 text-center">
                                                     {bookmaker.title}
                                                 </h4>
-                                                
+
                                                 {bookmaker.markets.find(m => m.key === 'h2h') && (
                                                     <div className="mb-4">
                                                         <h5 className="text-sm font-medium text-gray-300 mb-2">Moneyline</h5>
@@ -69,7 +69,7 @@ const NFLGameModal = ({ game, gameLines, isLoading, onClose }) => {
                                                         </div>
                                                     </div>
                                                 )}
-                                                
+
                                                 {bookmaker.markets.find(m => m.key === 'spreads') && (
                                                     <div className="mb-4">
                                                         <h5 className="text-sm font-medium text-gray-300 mb-2">Spread</h5>
@@ -124,4 +124,4 @@ const NFLGameModal = ({ game, gameLines, isLoading, onClose }) => {
     );
 };
 
-export default NFLGameModal;
+export default GameModal;

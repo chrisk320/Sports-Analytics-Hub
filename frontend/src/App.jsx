@@ -6,7 +6,7 @@ import PlayerCard from './components/PlayerCard';
 import TeamCard from './components/TeamCard';
 import StatsModal from './components/StatsModal';
 import ChatBot from './components/ChatBot';
-import NFLGameModal from './components/NFLGameModal';
+import GameModal from './components/GameModal';
 
 const API_BASE_URL = 'https://sports-analytics-hub-7hse.onrender.com';
 
@@ -60,6 +60,12 @@ export default function App() {
     teamLines: [],
     playerProps: [],
   });
+  const [nbaGames, setNbaGames] = useState([]);
+  const [activeNBAGame, setActiveNBAGame] = useState(null);
+  const [activeNBAGameLines, setActiveNBAGameLines] = useState({
+    teamLines: [],
+    playerProps: [],
+  });
 
   useEffect(() => {
     if (user) {
@@ -107,6 +113,18 @@ export default function App() {
       }
     };
     fetchNFLGames();
+  }, []);
+
+  useEffect(() => {
+    const fetchNBAGames = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/nbabets/nbagames`);
+        setNbaGames(response.data);
+      } catch (error) {
+        console.error("Failed to fetch NBA games:", error);
+      }
+    };
+    fetchNBAGames();
   }, []);
 
   const handleSearchChange = (e) => {
@@ -223,11 +241,34 @@ export default function App() {
     }
   }
 
+  const handleSelectNBAGame = async (game) => {
+    setActiveNBAGame(game);
+    setIsLoading(true);
+    try {
+      const [teamLinesRes, playerPropsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/nbabets/nbateamlines/${game.id}`),
+        axios.get(`${API_BASE_URL}/nbabets/nbaplayerprops/${game.id}`)
+      ]);
+      setActiveNBAGameLines({
+        teamLines: teamLinesRes.data,
+        playerProps: playerPropsRes.data,
+      });
+    } catch (error) {
+      console.error("Failed to fetch NBA game details:", error);
+      setActiveNBAGame(null);
+      setActiveNBAGameLines({ teamLines: [], playerProps: [] });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const handleCloseModal = () => {
     setActiveNBAPlayer(null);
     setActiveNBAPlayerData(null);
     setActiveNFLGame(null);
     setActiveNFLGameLines({ teamLines: [], playerProps: [] });
+    setActiveNBAGame(null);
+    setActiveNBAGameLines({ teamLines: [], playerProps: [] });
   };
 
   useEffect(() => {
@@ -273,7 +314,27 @@ export default function App() {
         )}
 
         {activeSection === 'nba-team-bets' && (
-          <div className="text-center text-gray-400">NBA Bets (coming soon)</div>
+          <div className="space-y-12">
+            <div className="w-full">
+              <h2 className="text-3xl font-bold text-center mb-8">NBA Team Bets</h2>
+              {nbaGames.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {nbaGames.map(game => (
+                    <TeamCard
+                      key={game.id}
+                      game={game}
+                      onSelect={handleSelectNBAGame}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
+                  <p className="text-lg">No NBA games available.</p>
+                  <p>Games will appear here when available.</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
         {activeSection === 'nfl-team-bets' && (
           <div className="space-y-12">
@@ -320,9 +381,16 @@ export default function App() {
         onFilter={handleFilterByOpponent}
       />
 
-      <NFLGameModal
+      <GameModal
         game={activeNFLGame}
         gameLines={activeNFLGameLines}
+        isLoading={isLoading}
+        onClose={handleCloseModal}
+      />
+
+      <GameModal
+        game={activeNBAGame}
+        gameLines={activeNBAGameLines}
         isLoading={isLoading}
         onClose={handleCloseModal}
       />
