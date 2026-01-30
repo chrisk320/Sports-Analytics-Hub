@@ -11,7 +11,7 @@ Run this script at night after all games have completed.
 import json
 import time
 import random
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -28,7 +28,7 @@ from fetch_todays_stats import (
 )
 
 SEASON = "2025-26"
-TEST_MODE = True
+TEST_MODE = False
 REQUEST_TIMEOUT = 60
 MAX_RETRIES = 3
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -61,11 +61,16 @@ def load_todays_games():
     games = data.get("games", [])
 
     print(f"Loaded {len(games)} games from {GAMES_FILE}")
-    print(f"  Game date: {stored_date}")
+    print(f"  Stored date (UTC): {stored_date}")
     print(f"  Fetched at: {data.get('fetched_at', 'unknown')}")
 
-    # Parse the stored date
-    game_date = date.fromisoformat(stored_date) if stored_date else date.today()
+    # Parse the stored date and subtract 1 day
+    # The Odds API stores dates in UTC, so evening games (e.g., Jan 29 7pm PT)
+    # appear as the next day (Jan 30 UTC). The NBA API uses US dates,
+    # so we need to subtract 1 day to get the actual game date.
+    stored = date.fromisoformat(stored_date) if stored_date else date.today()
+    game_date = stored - timedelta(days=1)
+    print(f"  NBA API date (adjusted): {game_date.isoformat()}")
 
     return games, game_date
 
