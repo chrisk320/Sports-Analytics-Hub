@@ -1,0 +1,74 @@
+name: NBA Data Fetch
+
+on:
+  schedule:
+    # Fetch today's scheduled games - 8 AM UTC daily (midnight PT)
+    - cron: '0 8 * * *'
+    # Fetch yesterday's game stats - 6 AM UTC daily (10 PM PT previous day)
+    - cron: '0 6 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  fetch-scheduled-games:
+    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd server/python_scripts
+          pip install -r requirements.txt
+
+      - name: Fetch today's scheduled games
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd server/python_scripts
+          python fetch_todays_scheduled_games.py
+
+      - name: Upload games data
+        uses: actions/upload-artifact@v4
+        with:
+          name: todays-games
+          path: server/data/todays_games.json
+          retention-days: 2
+
+  fetch-game-stats:
+    if: github.event.schedule == '0 6 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd server/python_scripts
+          pip install -r requirements.txt
+
+      - name: Download games data from previous run
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: todays-games
+          path: server/data/
+          workflow: nba-data-fetch.yml
+          workflow_conclusion: success
+        continue-on-error: true
+
+      - name: Fetch game stats
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          cd server/python_scripts
+          python fetch_yesterdays_games.py
