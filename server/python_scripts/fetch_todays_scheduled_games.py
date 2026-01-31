@@ -9,11 +9,13 @@ import os
 import json
 from datetime import datetime, date, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
 
 TEST_MODE = False
+PST = ZoneInfo("America/Los_Angeles")
 ODDS_API_BASE_URL = "https://api.the-odds-api.com/v4"
 DATA_DIR = Path(__file__).parent.parent / "data"
 GAMES_FILE = DATA_DIR / "todays_games.json"
@@ -75,7 +77,42 @@ def fetch_all_upcoming_games():
     events = response.json()
 
     print(f"  API returned {len(events)} upcoming events")
+
     return events
+
+
+def filter_games_by_pst_date(events, target_date):
+    """Filter games that occur on target_date in PST/PDT timezone.
+
+    Args:
+        events: List of events from the API
+        target_date: The date to filter for (in Pacific time)
+
+    Returns:
+        List of events that occur on target_date in Pacific time
+    """
+    # Create start and end of day in PST, then convert to UTC for comparison
+    pst_start = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=PST)
+    pst_end = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=PST)
+
+    # Convert to UTC
+    utc_start = pst_start.astimezone(timezone.utc)
+    utc_end = pst_end.astimezone(timezone.utc)
+
+    print(f"\nFiltering games for {target_date.isoformat()} (Pacific Time)")
+    print(f"  PST range: {pst_start.strftime('%Y-%m-%d %I:%M %p %Z')} to {pst_end.strftime('%Y-%m-%d %I:%M %p %Z')}")
+    print(f"  UTC range: {utc_start.isoformat()} to {utc_end.isoformat()}")
+
+    filtered = []
+    for event in events:
+        commence_str = event.get("commence_time", "")
+        if commence_str:
+            # Parse ISO format datetime (replace Z with +00:00 for fromisoformat)
+            commence = datetime.fromisoformat(commence_str.replace("Z", "+00:00"))
+            if utc_start <= commence <= utc_end:
+                filtered.append(event)
+
+    return filtered
 
 
 def save_games_to_json(events, target_date):
@@ -125,35 +162,35 @@ def main():
         print("\nNo upcoming NBA games found.")
         return
 
-    # Group games by date (UTC)
-    games_by_date = {}
-    for event in events:
-        commence = event.get("commence_time", "")
-        if commence:
-            game_date = commence[:10]  # Extract YYYY-MM-DD
-            if game_date not in games_by_date:
-                games_by_date[game_date] = []
-            games_by_date[game_date].append(event)
+    # Filter games for today in PST
+    today_pst = datetime.now(PST).date()
+    todays_events = filter_games_by_pst_date(events, today_pst)
 
-    # Get the earliest date with games (tonight's games in UTC)
-    earliest_date = min(games_by_date.keys())
-    todays_events = games_by_date[earliest_date]
-
-    print(f"\nFound {len(todays_events)} games for {earliest_date} (UTC):")
+    print(f"\nFound {len(todays_events)} games for {today_pst.isoformat()} (Pacific Time):")
     for event in todays_events:
         home = event.get("home_team", "?")
         away = event.get("away_team", "?")
-        time = event.get("commence_time", "?")
-        print(f"  {away} @ {home} - {time}")
+        commence_str = event.get("commence_time", "?")
+        # Convert to PST for display
+        if commence_str != "?":
+            commence_utc = datetime.fromisoformat(commence_str.replace("Z", "+00:00"))
+            commence_pst = commence_utc.astimezone(PST)
+            time_display = commence_pst.strftime("%I:%M %p %Z")
+        else:
+            time_display = "?"
+        print(f"  {away} @ {home} - {time_display}")
 
     if TEST_MODE:
         print("\nTEST_MODE: Would save to JSON file (not saving)")
         print(f"  File path: {GAMES_FILE}")
         return
 
-    # Save to JSON using the game date (UTC)
-    target_date = date.fromisoformat(earliest_date)
-    save_games_to_json(todays_events, target_date)
+    if not todays_events:
+        print("\nNo games scheduled for today in Pacific Time.")
+        return
+
+    # Save to JSON using today's date (PST)
+    save_games_to_json(todays_events, today_pst)
     print("\nDone! Run fetch_yesterdays_games.py tonight after games complete.")
 
 
