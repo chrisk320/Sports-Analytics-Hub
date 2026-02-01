@@ -1,128 +1,179 @@
 # Sports Analytics Hub
 
-This project is a full-stack application for analyzing NBA player performance and NFL betting opportunities, featuring a robust backend data pipeline, a RESTful API, and a modern React frontend. It supports both traditional and advanced NBA stats, personalized dashboards, NFL betting lines, and a conversational AI assistant.
+A full-stack application for analyzing NBA player performance and sports betting opportunities. Features a robust data pipeline, RESTful API, modern React frontend, and automated daily data updates via GitHub Actions.
+
+**Live Demo:** [Vercel Frontend](https://sports-analytics-hub.vercel.app) | **API:** [Render Backend](https://sports-analytics-hub-7hse.onrender.com)
 
 ## Project Architecture
 
-This project is built with a professional, separated architecture to handle data collection and data serving as distinct processes.
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   React SPA     │────▶│  Express API    │────▶│   PostgreSQL    │
+│   (Vercel)      │     │   (Render)      │     │   (Supabase)    │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               ▲
+                               │
+                    ┌──────────┴──────────┐
+                    │   GitHub Actions    │
+                    │  (Daily Data Sync)  │
+                    └─────────────────────┘
+```
 
-### 1. Data Pipeline (Scraping & Seeding Scripts)
+### 1. Data Pipeline
 
-- **Data Scrapers:** Node.js scripts using **Puppeteer** to scrape `stats.nba.com` for traditional (season averages, game logs) and advanced stats (usage %, ratings, shooting percentages, etc). Scripts are resumable and handle dynamic web features.
-- **Headshot Seeder:** Generates and saves official NBA headshot URLs for each player using a predictable pattern.
+- **Python Scripts:** Automated data fetchers using `nba_api` for player stats and game logs
+- **Node.js Scrapers:** Puppeteer scripts for scraping advanced stats from `stats.nba.com`
+- **GitHub Actions:** Scheduled workflows for daily data updates
+  - Morning job (5 AM PT): Fetches today's scheduled NBA games from The Odds API
+  - Night job (3 AM PT): Fetches game stats after games complete
 
 ### 2. Database (PostgreSQL)
 
-A PostgreSQL database serves as the single source of truth, with tables for:
-- `players`: Player info and headshot URL.
-- `player_season_stats`: Season averages for each player.
-- `player_game_logs`: Detailed, game-by-game stats.
-- `advanced_box_scores` & `advanced_scoring_logs`: Advanced metrics linked to specific games.
-- `user_favorites`: Persistent, user-specific favorite player lists.
-- `teams`: NBA team names and abbreviations.
+Hosted on Supabase with tables for:
+- `players`: Player info and headshot URLs
+- `player_season_stats`: Season averages
+- `player_game_logs`: Game-by-game traditional stats
+- `advanced_box_scores`: Advanced metrics (usage %, ratings, TS%)
+- `user_favorites`: User-specific favorite players
+- `teams`: NBA team names and abbreviations
 
 ### 3. External APIs
 
-- **The Odds API**: Real-time NFL betting odds from multiple sportsbooks (DraftKings, FanDuel, BetMGM, BetUS, ESPN BET)
-- **Google OAuth**: User authentication and profile management
+- **The Odds API:** Real-time NBA/NFL betting odds from multiple sportsbooks
+- **NBA API:** Official NBA stats via `nba_api` Python library
+- **Google OAuth:** User authentication
 
 ### 4. Backend API (Express.js)
 
-A RESTful API provides access to all data. Key endpoints:
+RESTful API hosted on Render:
 
 #### Players
-- `GET /players`: List all players.
-- `GET /players/:playerId`: Get player info.
-- `GET /players/:playerId/season-averages`: Latest season averages.
-- `GET /players/:playerId/game-logs`: Last 10 game logs (traditional stats).
-- `GET /players/:playerId/full-game-logs`: Last 10 game logs with advanced stats.
-- `GET /players/:playerId/game-logs/:opponent`: Filter game logs by opponent.
+- `GET /players` - List all players
+- `GET /players/:playerId` - Player info
+- `GET /players/:playerId/season-averages` - Season stats
+- `GET /players/:playerId/gamelogs` - Last 10 games
+- `GET /players/:playerId/full-gamelogs` - Games with advanced stats
+- `GET /players/:playerId/gamelogs/:opponent` - Filter by opponent
 
 #### Teams
-- `GET /teams`: List all NBA teams.
+- `GET /teams` - All NBA teams
 
 #### User Favorites
-- `GET /users/:userId/favorites`: Get user’s favorite players.
-- `POST /users/:userId/favorites`: Add a player to favorites.
-- `DELETE /users/:userId/favorites/:playerId`: Remove a player from favorites.
+- `GET /users/:userId/favorites` - User's favorites
+- `POST /users/:userId/favorites` - Add favorite
+- `DELETE /users/:userId/favorites/:playerId` - Remove favorite
+
+#### NBA Betting
+- `GET /nbabets/nbagames` - Upcoming NBA games
+- `GET /nbabets/nbateamlines/:gameId` - Team betting lines
+- `GET /nbabets/nbaplayerprops/:gameId` - Player prop bets
 
 #### NFL Betting
-- `GET /nflbets/nflgames`: Get upcoming NFL games with team matchups and game times.
-- `GET /nflbets/nflteamlines`: Get comprehensive betting lines (moneyline, spreads, totals) from multiple sportsbooks.
-- `GET /nflbets/nflplayerprops`: Get NFL player prop bets (passing yards, rushing yards, receiving yards).
+- `GET /nflbets/nflgames` - Upcoming NFL games
+- `GET /nflbets/nflteamlines/:gameId` - Team betting lines
+- `GET /nflbets/nflplayerprops/:gameId` - Player prop bets
 
-#### Chat (AI Assistant)
-- `POST /chat`: Ask natural language NBA stats questions (e.g., "Show me LeBron's advanced stats last 5 games"). Returns answers and structured data.
+#### AI Chat
+- `POST /chat` - Natural language NBA stats queries
 
 ### 5. Frontend (React)
 
-A modern, responsive single-page app built with **React** and **Tailwind CSS**. Key features:
+Modern SPA hosted on Vercel with three main sections:
 
-#### NBA Features
-- **User Authentication:** Google OAuth sign-in/out, persistent sessions.
-- **Personalized Dashboard:** Add/remove favorite players, persistent across sessions.
-- **Live Player Search:** Autocomplete search bar for all NBA players.
-- **Player Cards:** Show headshot, name, and allow removal from favorites.
-- **Stats Modal:**
-  - Season averages (points, rebounds, assists).
-  - Recent game logs (table: minutes, points, rebounds, assists, steals, usage %, TS%, OffRtg, DefRtg).
-  - Interactive bar chart (points, rebounds, assists).
-  - Filter game logs by opponent team.
+#### NBA Player Stats
+- Google OAuth authentication
+- Personalized dashboard with favorite players
+- Live player search with autocomplete
+- Stats modal with season averages, game logs, and charts
+- Filter game logs by opponent
 
-#### NFL Features
-- **NFL Team Cards:** Display upcoming NFL games with team matchups and game times.
-- **Betting Lines Integration:** Real-time odds from multiple sportsbooks (DraftKings, FanDuel, BetMGM, BetUS, ESPN BET).
-- **Multi-Market Betting:** Moneyline, point spreads, and over/under totals.
-- **Sportsbook Comparison:** Compare odds across different betting platforms.
+#### NBA Team Bets
+- Upcoming NBA games display
+- Real-time betting lines (moneyline, spreads, totals)
+- Multi-sportsbook comparison (DraftKings, FanDuel, BetMGM, etc.)
 
-#### Shared Features
-- **ChatBot:** Natural language NBA stats assistant powered by OpenAI, can answer questions about player stats, advanced stats, and matchups.
-- **Responsive UI:** Modern, mobile-friendly, styled with Tailwind CSS.
-
-## Current Features
-
-### NBA Features
-- **Full-Stack Application:** Clean separation between frontend, backend API, and database.
-- **User Authentication:** Secure Google OAuth login/logout, persistent sessions.
-- **Personalized Dashboards:** Add/remove favorite players, persistent across sessions.
-- **Live Player Search:** Autocomplete search bar for all NBA players.
-- **Player Headshots:** Official NBA headshots on player cards and modals.
-- **Stats Modal:**
-  - Season averages and recent game logs (traditional and advanced stats).
-  - Interactive bar chart for points, rebounds, assists.
-  - Filter logs by opponent team.
-- **AI ChatBot:** Ask natural language questions about NBA stats, advanced stats, and matchups.
-- **Interactive Data Visualization:** Bar chart visualizes recent game performance, switchable by stat.
-- **Team Filter:** Filter player game logs by opponent.
-- **Persistent Favorites:** User favorites are saved and reloaded on login.
-
-### NFL Features
-- **NFL Games Display:** Show upcoming NFL games with team matchups and game times.
-- **Real-Time Betting Data:** Integration with The Odds API for live betting lines.
-- **Multi-Sportsbook Support:** Odds from DraftKings, FanDuel, BetMGM, BetUS, and ESPN BET.
-- **Betting Markets:** Moneyline, point spreads, and over/under totals.
-- **Player Props:** NFL player prop bets for passing, rushing, and receiving yards.
-
-### Shared Features
-- **Mobile-Friendly UI:** Responsive, modern design with Tailwind CSS.
-- **Section Navigation:** Toggle between NBA stats and NFL betting sections.
+#### NFL Team Bets
+- NFL games with betting lines
+- Player prop bets
 
 ## Technology Stack
 
-- **Frontend:** React, Tailwind CSS, Axios, Recharts
-- **Backend:** Node.js, Express.js
-- **Database:** PostgreSQL
-- **Authentication:** Google OAuth 2.0
-- **Web Scraping:** Puppeteer
-- **Node.js-Postgres Bridge:** `pg` (node-postgres)
-- **AI Assistant:** OpenAI GPT (via API)
-- **Betting Data:** The Odds API
-- **External APIs:** Google OAuth, The Odds API
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | React 19, Vite, Tailwind CSS, Recharts, Axios |
+| **Backend** | Node.js, Express.js |
+| **Database** | PostgreSQL (Supabase) |
+| **Data Pipeline** | Python (nba_api), Puppeteer, GitHub Actions |
+| **AI** | OpenAI GPT-3.5-turbo |
+| **Auth** | Google OAuth 2.0 |
+| **APIs** | The Odds API, NBA API |
+| **Hosting** | Vercel (frontend), Render (backend) |
 
-## Next Steps
+## Quick Start
 
-- **NFL Betting Lines Display:** Implement clickable team cards to show detailed betting lines from multiple sportsbooks.
-- **Betting Line Comparison:** Add UI to compare odds across different sportsbooks for better betting decisions.
-- **AI Model Integration:** Build and display predictive models using the rich NBA dataset.
-- **Enhanced NFL Features:** Add more betting markets (player props, futures, etc.).
-- **Deployment:** Deploy the full-stack app (frontend, backend, and database) to the web using services like Vercel and Heroku.
+### Prerequisites
+- Node.js 18+
+- Python 3.11+
+- PostgreSQL database
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend
+```bash
+cd server
+npm install
+npm run start
+```
+
+### Python Scripts
+```bash
+cd server/python_scripts
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Fetch all player data (initial setup)
+python fetch_team_rosters_and_logs.py
+python fetch_all_players_advanced_box_scores.py
+
+# Daily updates (automated via GitHub Actions)
+python fetch_todays_scheduled_games.py  # Morning
+python fetch_yesterdays_games.py        # Night
+```
+
+## Environment Variables
+
+### Backend (.env)
+```env
+DATABASE_URL=postgresql://user:password@host:5432/nba_stats
+OPENAI_API_KEY=sk-...
+ODDS_API_KEY=...
+PORT=5000
+```
+
+### GitHub Secrets (for Actions)
+- `DATABASE_URL` - Supabase PostgreSQL connection string
+- `ODDS_API_KEY` - The Odds API key
+
+## Automated Data Pipeline
+
+GitHub Actions runs two scheduled jobs daily:
+
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| `fetch-scheduled-games` | 5 AM PT (1 PM UTC) | Fetch today's NBA games from Odds API |
+| `fetch-game-stats` | 3 AM PT (11 AM UTC) | Fetch player stats after games complete |
+
+The morning job saves game data as an artifact, which the night job downloads to know which teams played.
+
+## Future Enhancements
+
+- AI-powered betting predictions using historical data
+- Real-time game tracking and live odds updates
+- Enhanced player prop analysis
+- Mobile app version
