@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
+const PROP_MARKETS = {
+    player_points: 'Points',
+    player_rebounds: 'Rebounds',
+    player_assists: 'Assists',
+    player_points_rebounds: 'PTS+REB',
+    player_points_assists: 'PTS+AST',
+    player_rebounds_assists: 'REB+AST',
+};
+
 const GameModal = ({ game, gameLines, isLoading, onClose }) => {
+    const [selectedMarket, setSelectedMarket] = useState('player_points');
+
     if (!game) return null;
 
     const formatOdds = (price) => {
@@ -12,6 +23,29 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
     const formatSpread = (spread) => {
         if (spread > 0) return `+${spread}`;
         return spread.toString();
+    };
+
+    // Group player prop outcomes by player name
+    const groupOutcomesByPlayer = (outcomes) => {
+        const grouped = {};
+        outcomes?.forEach((outcome) => {
+            const playerName = outcome.description; // Player name is in 'description'
+            if (!grouped[playerName]) {
+                grouped[playerName] = { over: null, under: null };
+            }
+            if (outcome.name === 'Over') { // Over/Under is in 'name'
+                grouped[playerName].over = outcome;
+            } else if (outcome.name === 'Under') {
+                grouped[playerName].under = outcome;
+            }
+        });
+        return grouped;
+    };
+
+    // Get props for selected market from a bookmaker
+    const getMarketProps = (bookmaker, marketKey) => {
+        const market = bookmaker.markets?.find(m => m.key === marketKey);
+        return market ? groupOutcomesByPlayer(market.outcomes) : {};
     };
 
     return (
@@ -114,6 +148,85 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
                             {!isLoading && (!gameLines?.teamLines?.bookmakers || gameLines.teamLines.bookmakers.length === 0) && (
                                 <div className="text-center py-8">
                                     <p className="text-gray-400">No betting lines available for this game.</p>
+                                </div>
+                            )}
+
+                            {/* Player Props */}
+                            {gameLines?.playerProps?.bookmakers && gameLines.playerProps.bookmakers.length > 0 && (
+                                <div className="mt-8">
+                                    <h3 className="text-xl font-semibold text-white mb-4">Player Props</h3>
+
+                                    {/* Market Selector Tabs */}
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        {Object.entries(PROP_MARKETS).map(([key, label]) => (
+                                            <button
+                                                key={key}
+                                                onClick={() => setSelectedMarket(key)}
+                                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                                    selectedMarket === key
+                                                        ? 'bg-blue-600 text-white'
+                                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Props by Bookmaker */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {gameLines.playerProps.bookmakers.map((bookmaker) => {
+                                            const playerProps = getMarketProps(bookmaker, selectedMarket);
+                                            const playerNames = Object.keys(playerProps);
+
+                                            if (playerNames.length === 0) return null;
+
+                                            return (
+                                                <div key={bookmaker.key} className="bg-gray-700 rounded-lg p-4">
+                                                    <h4 className="text-lg font-semibold text-white mb-3 text-center">
+                                                        {bookmaker.title}
+                                                    </h4>
+                                                    <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">
+                                                        {PROP_MARKETS[selectedMarket]}
+                                                    </h5>
+                                                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                                                        {playerNames.map((playerName) => {
+                                                            const props = playerProps[playerName];
+                                                            return (
+                                                                <div key={playerName} className="text-sm">
+                                                                    <div className="text-gray-300 font-medium mb-1">{playerName}</div>
+                                                                    <div className="flex justify-between gap-4 text-xs">
+                                                                        {props.over && (
+                                                                            <div className="flex-1 flex justify-between bg-gray-600 rounded px-2 py-1">
+                                                                                <span className="text-green-400">O {props.over.point}</span>
+                                                                                <span className="text-white">{formatOdds(props.over.price)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {props.under && (
+                                                                            <div className="flex-1 flex justify-between bg-gray-600 rounded px-2 py-1">
+                                                                                <span className="text-red-400">U {props.under.point}</span>
+                                                                                <span className="text-white">{formatOdds(props.under.price)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* No props message */}
+                                    {gameLines.playerProps.bookmakers.every(b => {
+                                        const props = getMarketProps(b, selectedMarket);
+                                        return Object.keys(props).length === 0;
+                                    }) && (
+                                        <div className="text-center py-4">
+                                            <p className="text-gray-400">No {PROP_MARKETS[selectedMarket]} props available.</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
