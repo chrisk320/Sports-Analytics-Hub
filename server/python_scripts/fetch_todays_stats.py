@@ -6,11 +6,30 @@ from datetime import datetime
 import psycopg
 from dotenv import load_dotenv
 from nba_api.stats.endpoints import playergamelogs
+from nba_api.stats.library import http
 
 TEST_MODE = False
 
-NBA_API_TIMEOUT = 60
-NBA_API_RETRIES = 3
+NBA_API_TIMEOUT = 120  # Increased timeout for cloud environments
+NBA_API_RETRIES = 5  # More retries for flaky connections
+
+# Custom headers to help bypass NBA API restrictions on datacenter IPs
+CUSTOM_HEADERS = {
+    'Host': 'stats.nba.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Origin': 'https://www.nba.com',
+    'Connection': 'keep-alive',
+    'Referer': 'https://www.nba.com/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+}
+
+# Override the default headers in nba_api
+http.NBAStatsHTTP.headers = CUSTOM_HEADERS
 
 
 def get_db_connection():

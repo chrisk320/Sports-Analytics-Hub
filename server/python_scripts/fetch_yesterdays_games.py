@@ -18,6 +18,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from nba_api.stats.endpoints import playergamelogs
 from nba_api.stats.endpoints.commonteamroster import CommonTeamRoster
+from nba_api.stats.library import http
 
 from fetch_todays_stats import (
     get_db_connection,
@@ -29,8 +30,27 @@ from fetch_todays_stats import (
 
 SEASON = "2025-26"
 TEST_MODE = False
-REQUEST_TIMEOUT = 60
-MAX_RETRIES = 3
+REQUEST_TIMEOUT = 120  # Increased timeout for cloud environments
+MAX_RETRIES = 5  # More retries for flaky connections
+
+# Custom headers to help bypass NBA API restrictions on datacenter IPs
+# The NBA API blocks requests that don't look like they're from a browser
+CUSTOM_HEADERS = {
+    'Host': 'stats.nba.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Origin': 'https://www.nba.com',
+    'Connection': 'keep-alive',
+    'Referer': 'https://www.nba.com/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+}
+
+# Override the default headers in nba_api
+http.NBAStatsHTTP.headers = CUSTOM_HEADERS
 DATA_DIR = Path(__file__).parent.parent / "data"
 GAMES_FILE = DATA_DIR / "todays_games.json"
 
@@ -93,6 +113,10 @@ def fetch_team_players(team_id, season):
     """Fetch all players on a team's roster."""
     last_error = None
     roster = None
+
+    # Initial delay before first request to avoid rate limiting
+    time.sleep(random.uniform(2, 4))
+
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             roster = CommonTeamRoster(
@@ -112,8 +136,10 @@ def fetch_team_players(team_id, season):
             last_error = exc
             if attempt == MAX_RETRIES:
                 raise
-            sleep_ms = 1000 * attempt + random.randint(0, 500)
-            time.sleep(sleep_ms / 1000)
+            # Exponential backoff with jitter for retries
+            sleep_secs = (2 ** attempt) + random.uniform(1, 3)
+            print(f"    Retry {attempt}/{MAX_RETRIES} in {sleep_secs:.1f}s...")
+            time.sleep(sleep_secs)
     if last_error and roster is None:
         raise last_error
 
