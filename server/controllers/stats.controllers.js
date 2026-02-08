@@ -77,16 +77,14 @@ export const getFullGameLogs = async (req, res) => {
     const { playerId } = req.params;
     try {
         const query = `
-            SELECT 
+            SELECT
                 pgl.*,
                 abs.offensive_rating,
                 abs.defensive_rating,
                 abs.net_rating,
                 abs.effective_fg_percentage,
                 abs.true_shooting_percentage,
-                abs.usage_percentage,
-                abs.pace,
-                abs.player_impact_estimate
+                abs.usage_percentage
             FROM player_game_logs pgl
             LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id
             WHERE pgl.player_id = $1
@@ -106,16 +104,14 @@ export const getGameLogsByOpponent = async (req, res) => {
     console.log(`Received request for player ${playerId} vs ${opponentAbbr}`);
     try {
         const query = `
-            SELECT 
+            SELECT
                 pgl.*,
                 abs.offensive_rating,
                 abs.defensive_rating,
                 abs.net_rating,
                 abs.effective_fg_percentage,
                 abs.true_shooting_percentage,
-                abs.usage_percentage,
-                abs.pace,
-                abs.player_impact_estimate
+                abs.usage_percentage
             FROM player_game_logs pgl
             LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id
             WHERE pgl.player_id = $1 AND pgl.opponent = $2

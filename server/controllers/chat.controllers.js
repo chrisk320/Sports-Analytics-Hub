@@ -63,11 +63,11 @@ const findTeamAbbr = async (teamName) => {
 const queryTemplates = {
     player_stats: {
         basic: `SELECT pgl.* FROM player_game_logs pgl WHERE pgl.player_id = $1 ORDER BY pgl.game_date DESC LIMIT $2`,
-        advanced: `SELECT pgl.*, abs.usage_percentage, abs.offensive_rating, abs.defensive_rating, abs.net_rating, abs.effective_fg_percentage, abs.true_shooting_percentage, abs.pace, abs.player_impact_estimate FROM player_game_logs pgl LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id = $1 ORDER BY pgl.game_date DESC LIMIT $2`
+        advanced: `SELECT pgl.*, abs.usage_percentage, abs.offensive_rating, abs.defensive_rating, abs.net_rating, abs.effective_fg_percentage, abs.true_shooting_percentage FROM player_game_logs pgl LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id = $1 ORDER BY pgl.game_date DESC LIMIT $2`
     },
     player_vs_team: {
         basic: `SELECT pgl.* FROM player_game_logs pgl WHERE pgl.player_id = $1 AND pgl.opponent = $2 ORDER BY pgl.game_date DESC LIMIT $3`,
-        advanced: `SELECT pgl.*, abs.usage_percentage, abs.offensive_rating, abs.defensive_rating, abs.net_rating, abs.effective_fg_percentage, abs.true_shooting_percentage, abs.pace, abs.player_impact_estimate FROM player_game_logs pgl LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id = $1 AND pgl.opponent = $2 ORDER BY pgl.game_date DESC LIMIT $3`
+        advanced: `SELECT pgl.*, abs.usage_percentage, abs.offensive_rating, abs.defensive_rating, abs.net_rating, abs.effective_fg_percentage, abs.true_shooting_percentage FROM player_game_logs pgl LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id = $1 AND pgl.opponent = $2 ORDER BY pgl.game_date DESC LIMIT $3`
     },
 
     player_comparison: {
@@ -379,9 +379,7 @@ export const chatWithAI = async (req, res) => {
                 defensive_rating: game.defensive_rating,
                 net_rating: game.net_rating,
                 effective_fg_percentage: game.effective_fg_percentage,
-                true_shooting_percentage: game.true_shooting_percentage,
-                pace: game.pace,
-                player_impact_estimate: game.player_impact_estimate
+                true_shooting_percentage: game.true_shooting_percentage
             }));
         }
 
@@ -441,7 +439,7 @@ export const chatWithAI = async (req, res) => {
                             Format guidelines:
                             - Display each game as a separate bullet point with the date and opponent
                             - For BASIC STATS (default): Show only minutes, points, rebounds, assists, steals, blocks
-                            - For ADVANCED STATS (when requested): Include usage %, offensive/defensive/net ratings, effective FG%, true shooting %, pace, player impact estimate
+                            - For ADVANCED STATS (when requested): Include usage %, offensive/defensive/net ratings, effective FG%, true shooting %
                             - Use sub-bullets to organize stats clearly
                             - Include averages when multiple games are shown
                             - For usage percentage: explain it as "percentage of team plays used by the player"

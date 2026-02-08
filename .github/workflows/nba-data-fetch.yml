@@ -29,3 +29,10 @@ jobs:
         run: |
           cd server/python_scripts
           python fetch_bref_yesterdays_games.py
+
+      - name: Fetch yesterday's advanced stats (Basketball Reference)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd server/python_scripts
+          python fetch_bref_advanced_stats.py --yesterday

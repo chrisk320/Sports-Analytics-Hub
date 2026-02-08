@@ -25,9 +25,7 @@ const setupDatabase = async () => {
       net_rating REAL,
       effective_fg_percentage REAL,
       true_shooting_percentage REAL,
-      usage_percentage REAL,
-      pace REAL,
-      player_impact_estimate REAL
+      usage_percentage REAL
     );
   `;
     try {
@@ -98,9 +96,7 @@ const scrapeAdvancedBoxScores = async (browser, player, season) => {
                         const effective_fg_percentage = parseFloat(columns[13]?.innerText, 10) || 0;
                         const true_shooting_percentage = parseFloat(columns[14]?.innerText, 10) || 0;
                         const usage_percentage = parseFloat(columns[15]?.innerText, 10) || 0;
-                        const pace = parseFloat(columns[16]?.innerText, 10) || 0;
-                        const player_impact_estimate = parseFloat(columns[17]?.innerText, 10) || 0;
-                        logs.push({ gameDate, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, usage_percentage, pace, player_impact_estimate });
+                        logs.push({ gameDate, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, usage_percentage });
                     }
                 });
                 return logs;
@@ -204,10 +200,10 @@ const main = async () => {
 
                         if (game_log_id) {
                             await client.query(
-                                `INSERT INTO advanced_box_scores (game_log_id, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, usage_percentage, pace, player_impact_estimate) 
-                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+                                `INSERT INTO advanced_box_scores (game_log_id, offensive_rating, defensive_rating, net_rating, effective_fg_percentage, true_shooting_percentage, usage_percentage)
+                                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                                  ON CONFLICT (game_log_id) DO NOTHING`,
-                                [game_log_id, log.offensive_rating, log.defensive_rating, log.net_rating, log.effective_fg_percentage, log.true_shooting_percentage, log.usage_percentage, log.pace, log.player_impact_estimate]
+                                [game_log_id, log.offensive_rating, log.defensive_rating, log.net_rating, log.effective_fg_percentage, log.true_shooting_percentage, log.usage_percentage]
                             );
                         } else {
                             console.warn(`Could not find matching game_log_id for date: ${formattedDate}`);

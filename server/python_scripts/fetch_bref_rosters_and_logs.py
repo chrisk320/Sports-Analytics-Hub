@@ -314,7 +314,9 @@ def main(season_end_year=2026):
             INSERT INTO player_game_logs
             (player_id, season, game_date, opponent, min, pts, reb, ast, stl, blk)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (player_id, season, game_date) DO NOTHING;
+            ON CONFLICT (player_id, season, game_date) DO UPDATE
+            SET min = EXCLUDED.min, pts = EXCLUDED.pts, reb = EXCLUDED.reb,
+                ast = EXCLUDED.ast, stl = EXCLUDED.stl, blk = EXCLUDED.blk;
         """
 
         current_date = start_date
