@@ -29,7 +29,7 @@ import psycopg
 from dotenv import load_dotenv
 
 # Configuration
-TEST_MODE = True
+TEST_MODE = False
 SEASON_STRING = "2025-26"
 
 # Season date ranges
