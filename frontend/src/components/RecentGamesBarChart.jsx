@@ -18,18 +18,18 @@ const RecentGamesBarChart = ({ data, stat }) => {
     return (
         <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                <XAxis dataKey="date" stroke="#A0AEC0" fontSize={12} />
-                <YAxis stroke="#A0AEC0" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
+                <YAxis stroke="#94a3b8" fontSize={12} />
                 <Tooltip
                     contentStyle={{
-                        backgroundColor: '#2D3748',
-                        border: '1px solid #4A5568',
+                        backgroundColor: '#0f172a',
+                        border: '1px solid #334155',
                         borderRadius: '0.5rem'
                     }}
-                    labelStyle={{ color: '#E2E8F0' }}
+                    labelStyle={{ color: '#f8fafc' }}
                 />
-                <Bar dataKey="value" name={statName} fill="#4299E1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" name={statName} fill="#a855f7" radius={[4, 4, 0, 0]} />
             </BarChart>
         </ResponsiveContainer>
     );

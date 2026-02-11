@@ -272,12 +272,12 @@ export default function App() {
   };
 
   useEffect(() => {
-    document.body.className = 'bg-gray-900';
+    document.body.className = 'bg-slate-950';
     return () => { document.body.className = ''; }
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 font-sans text-white flex flex-col">
+    <div className="min-h-screen bg-slate-950 font-sans text-slate-50 flex flex-col">
       <Header isLoading={isLoading} user={user} setToken={setToken} activeSection={activeSection} setActiveSection={setActiveSection} />
 
       <main className="w-screen px-4 sm:px-6 lg:px-8 py-8 flex-grow">
@@ -304,7 +304,7 @@ export default function App() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
+                <div className="text-center text-slate-500 py-16 px-4 border-2 border-dashed border-slate-700 rounded-lg max-w-lg mx-auto">
                   <p className="text-lg">Your dashboard is empty.</p>
                   <p>Search for a player to add them to your list.</p>
                 </div>
@@ -328,7 +328,7 @@ export default function App() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
+                <div className="text-center text-slate-500 py-16 px-4 border-2 border-dashed border-slate-700 rounded-lg max-w-lg mx-auto">
                   <p className="text-lg">No NBA games available.</p>
                   <p>Games will appear here when available.</p>
                 </div>
@@ -351,7 +351,7 @@ export default function App() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-16 px-4 border-2 border-dashed border-gray-700 rounded-lg max-w-lg mx-auto">
+                <div className="text-center text-slate-500 py-16 px-4 border-2 border-dashed border-slate-700 rounded-lg max-w-lg mx-auto">
                   <p className="text-lg">No NFL games available.</p>
                   <p>Games will appear here when available.</p>
                 </div>
@@ -363,7 +363,7 @@ export default function App() {
         {/* Chat Button */}
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
+          className="fixed bottom-6 right-6 bg-purple-600 hover:bg-purple-500 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
           title="Ask AI about NBA stats"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -400,7 +400,7 @@ export default function App() {
         onClose={() => setIsChatOpen(false)} 
       />
 
-      <footer className="text-center text-gray-500 py-8 mt-auto">
+      <footer className="text-center text-slate-500 py-8 mt-auto">
         <p>NBA Stats Dashboard</p>
       </footer>
     </div>

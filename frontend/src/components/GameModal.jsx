@@ -50,20 +50,20 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-gray-700">
+                <div className="flex justify-between items-center p-6 border-b border-slate-800">
                     <div>
-                        <h2 className="text-2xl font-bold text-white">
+                        <h2 className="text-2xl font-bold text-slate-50">
                             {game.away_team} @ {game.home_team}
                         </h2>
-                        <p className="text-gray-400 mt-1">
+                        <p className="text-slate-400 mt-1">
                             {new Date(game.commence_time).toLocaleString()}
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+                        className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 transition-colors"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -72,30 +72,30 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
                 <div className="p-6">
                     {isLoading ? (
                         <div className="flex justify-center items-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                            <span className="ml-3 text-gray-400">Loading betting lines...</span>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                            <span className="ml-3 text-slate-400">Loading betting lines...</span>
                         </div>
                     ) : (
                         <div className="space-y-6">
                             {/* Team Lines */}
                             {gameLines?.teamLines?.bookmakers && (
                                 <div>
-                                    <h3 className="text-xl font-semibold text-white mb-4">Team Lines</h3>
+                                    <h3 className="text-xl font-semibold text-slate-50 mb-4">Team Lines</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {gameLines.teamLines.bookmakers.map((bookmaker) => (
-                                            <div key={bookmaker.key} className="bg-gray-700 rounded-lg p-4">
-                                                <h4 className="text-lg font-semibold text-white mb-3 text-center">
+                                            <div key={bookmaker.key} className="bg-slate-800 rounded-lg p-4">
+                                                <h4 className="text-lg font-semibold text-slate-50 mb-3 text-center">
                                                     {bookmaker.title}
                                                 </h4>
 
                                                 {bookmaker.markets.find(m => m.key === 'h2h') && (
                                                     <div className="mb-4">
-                                                        <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">Moneyline</h5>
+                                                        <h5 className="text-sm font-bold text-purple-500 uppercase tracking-wide mb-2 border-b border-slate-700 pb-1">Moneyline</h5>
                                                         <div className="space-y-1">
                                                             {bookmaker.markets.find(m => m.key === 'h2h').outcomes.map((outcome, index) => (
                                                                 <div key={index} className="flex justify-between text-sm">
-                                                                    <span className="text-gray-300">{outcome.name}</span>
-                                                                    <span className="text-white font-medium">
+                                                                    <span className="text-slate-300">{outcome.name}</span>
+                                                                    <span className="text-slate-50 font-medium">
                                                                         {formatOdds(outcome.price)}
                                                                     </span>
                                                                 </div>
@@ -106,14 +106,14 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
                                                 {bookmaker.markets.find(m => m.key === 'spreads') && (
                                                     <div className="mb-4">
-                                                        <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">Spread</h5>
+                                                        <h5 className="text-sm font-bold text-purple-500 uppercase tracking-wide mb-2 border-b border-slate-700 pb-1">Spread</h5>
                                                         <div className="space-y-1">
                                                             {bookmaker.markets.find(m => m.key === 'spreads').outcomes.map((outcome, index) => (
                                                                 <div key={index} className="flex justify-between text-sm">
-                                                                    <span className="text-gray-300">
+                                                                    <span className="text-slate-300">
                                                                         {outcome.name} {formatSpread(outcome.point)}
                                                                     </span>
-                                                                    <span className="text-white font-medium">
+                                                                    <span className="text-slate-50 font-medium">
                                                                         {formatOdds(outcome.price)}
                                                                     </span>
                                                                 </div>
@@ -124,14 +124,14 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
                                                 {bookmaker.markets.find(m => m.key === 'totals') && (
                                                     <div>
-                                                        <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">Total</h5>
+                                                        <h5 className="text-sm font-bold text-purple-500 uppercase tracking-wide mb-2 border-b border-slate-700 pb-1">Total</h5>
                                                         <div className="space-y-1">
                                                             {bookmaker.markets.find(m => m.key === 'totals').outcomes.map((outcome, index) => (
                                                                 <div key={index} className="flex justify-between text-sm">
-                                                                    <span className="text-gray-300">
+                                                                    <span className="text-slate-300">
                                                                         {outcome.name} {outcome.point}
                                                                     </span>
-                                                                    <span className="text-white font-medium">
+                                                                    <span className="text-slate-50 font-medium">
                                                                         {formatOdds(outcome.price)}
                                                                     </span>
                                                                 </div>
@@ -147,14 +147,14 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
 
                             {!isLoading && (!gameLines?.teamLines?.bookmakers || gameLines.teamLines.bookmakers.length === 0) && (
                                 <div className="text-center py-8">
-                                    <p className="text-gray-400">No betting lines available for this game.</p>
+                                    <p className="text-slate-400">No betting lines available for this game.</p>
                                 </div>
                             )}
 
                             {/* Player Props */}
                             {gameLines?.playerProps?.bookmakers && gameLines.playerProps.bookmakers.length > 0 && (
                                 <div className="mt-8">
-                                    <h3 className="text-xl font-semibold text-white mb-4">Player Props</h3>
+                                    <h3 className="text-xl font-semibold text-slate-50 mb-4">Player Props</h3>
 
                                     {/* Market Selector Tabs */}
                                     <div className="flex flex-wrap gap-2 mb-4">
@@ -164,8 +164,8 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
                                                 onClick={() => setSelectedMarket(key)}
                                                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                                     selectedMarket === key
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                        ? 'bg-purple-600 text-white'
+                                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                                                 }`}
                                             >
                                                 {label}
@@ -182,11 +182,11 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
                                             if (playerNames.length === 0) return null;
 
                                             return (
-                                                <div key={bookmaker.key} className="bg-gray-700 rounded-lg p-4">
-                                                    <h4 className="text-lg font-semibold text-white mb-3 text-center">
+                                                <div key={bookmaker.key} className="bg-slate-800 rounded-lg p-4">
+                                                    <h4 className="text-lg font-semibold text-slate-50 mb-3 text-center">
                                                         {bookmaker.title}
                                                     </h4>
-                                                    <h5 className="text-sm font-bold text-blue-400 uppercase tracking-wide mb-2 border-b border-gray-600 pb-1">
+                                                    <h5 className="text-sm font-bold text-purple-500 uppercase tracking-wide mb-2 border-b border-slate-700 pb-1">
                                                         {PROP_MARKETS[selectedMarket]}
                                                     </h5>
                                                     <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -194,18 +194,18 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
                                                             const props = playerProps[playerName];
                                                             return (
                                                                 <div key={playerName} className="text-sm">
-                                                                    <div className="text-gray-300 font-medium mb-1">{playerName}</div>
+                                                                    <div className="text-slate-300 font-medium mb-1">{playerName}</div>
                                                                     <div className="flex justify-between gap-4 text-xs">
                                                                         {props.over && (
-                                                                            <div className="flex-1 flex justify-between bg-gray-600 rounded px-2 py-1">
-                                                                                <span className="text-green-400">O {props.over.point}</span>
-                                                                                <span className="text-white">{formatOdds(props.over.price)}</span>
+                                                                            <div className="flex-1 flex justify-between bg-slate-700 rounded px-2 py-1">
+                                                                                <span className="text-emerald-400">O {props.over.point}</span>
+                                                                                <span className="text-slate-50">{formatOdds(props.over.price)}</span>
                                                                             </div>
                                                                         )}
                                                                         {props.under && (
-                                                                            <div className="flex-1 flex justify-between bg-gray-600 rounded px-2 py-1">
-                                                                                <span className="text-red-400">U {props.under.point}</span>
-                                                                                <span className="text-white">{formatOdds(props.under.price)}</span>
+                                                                            <div className="flex-1 flex justify-between bg-slate-700 rounded px-2 py-1">
+                                                                                <span className="text-rose-400">U {props.under.point}</span>
+                                                                                <span className="text-slate-50">{formatOdds(props.under.price)}</span>
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -224,7 +224,7 @@ const GameModal = ({ game, gameLines, isLoading, onClose }) => {
                                         return Object.keys(props).length === 0;
                                     }) && (
                                         <div className="text-center py-4">
-                                            <p className="text-gray-400">No {PROP_MARKETS[selectedMarket]} props available.</p>
+                                            <p className="text-slate-400">No {PROP_MARKETS[selectedMarket]} props available.</p>
                                         </div>
                                     )}
                                 </div>

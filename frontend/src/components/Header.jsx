@@ -3,13 +3,13 @@ import { BarChart2, Loader } from 'lucide-react';
 import Login from './Login.jsx'
 
 const Header = ({ isLoading, user, setToken, activeSection, setActiveSection }) => (
-  <header className="bg-gray-900 text-white shadow-lg sticky top-0 z-20">
+  <header className="bg-slate-950 text-slate-50 shadow-lg sticky top-0 z-20 border-b border-slate-800">
     <div className="container mx-auto px-4 py-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
-          <BarChart2 className="w-8 h-8 text-blue-400" />
+          <BarChart2 className="w-8 h-8 text-purple-500" />
           <h1 className="text-2xl font-bold tracking-tight">Sports Analytics Hub</h1>
-          {isLoading && <Loader className="w-6 h-6 animate-spin text-blue-400" />}
+          {isLoading && <Loader className="w-6 h-6 animate-spin text-purple-500" />}
         </div>
         <Login user={user} setToken={setToken} />
       </div>
@@ -18,19 +18,19 @@ const Header = ({ isLoading, user, setToken, activeSection, setActiveSection }) 
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setActiveSection('nba-player-stats')}
-            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nba-player-stats' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
+            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nba-player-stats' ? 'bg-purple-600 text-white' : 'text-slate-300 hover:text-slate-50 hover:bg-slate-800'}`}
           >
             NBA Player Stats
           </button>
           <button
             onClick={() => setActiveSection('nba-team-bets')}
-            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nba-team-bets' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
+            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nba-team-bets' ? 'bg-purple-600 text-white' : 'text-slate-300 hover:text-slate-50 hover:bg-slate-800'}`}
           >
             NBA Bets
           </button>
           <button
             onClick={() => setActiveSection('nfl-team-bets')}
-            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nfl-team-bets' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:text-white hover:bg-gray-800'}`}
+            className={`px-4 py-2 rounded-lg transition ${activeSection === 'nfl-team-bets' ? 'bg-purple-600 text-white' : 'text-slate-300 hover:text-slate-50 hover:bg-slate-800'}`}
           >
             NFL Bets
           </button>

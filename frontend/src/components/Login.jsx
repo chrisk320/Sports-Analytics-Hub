@@ -17,9 +17,9 @@ const Login = ({ user, setToken }) => {
     if (user) {
         return (
             <div className="flex items-center space-x-4">
-                <button 
+                <button
                     onClick={logout}
-                    className="flex items-center space-x-2 bg-red-600 hover:bg-red-500 transition-colors px-4 py-2 rounded-lg"
+                    className="flex items-center space-x-2 bg-rose-600 hover:bg-rose-500 transition-colors px-4 py-2 rounded-lg"
                 >
                     <LogOut className="w-5 h-5" />
                     <span>Logout</span>
@@ -29,7 +29,7 @@ const Login = ({ user, setToken }) => {
     }
 
     return (
-        <button className="flex items-center space-x-2 bg-gray-700 hover:bg-gray-600 transition-colors px-4 py-2 rounded-lg" onClick={() => login()}>
+        <button className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-500 transition-colors px-4 py-2 rounded-lg text-white" onClick={() => login()}>
             <User className="w-5 h-5" />
             <span>Sign In</span>
         </button>
