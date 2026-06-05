@@ -40,8 +40,6 @@ export default function Layout() {
   const [activeNFLGame, setActiveNFLGame] = useState(null);
   const [activeNFLGameLines, setActiveNFLGameLines] = useState({ teamLines: [], playerProps: [] });
   const [nbaGames, setNbaGames] = useState([]);
-  const [activeNBAGame, setActiveNBAGame] = useState(null);
-  const [activeNBAGameLines, setActiveNBAGameLines] = useState({ teamLines: [], playerProps: [] });
 
   // Betting / watchlist UI state (shared with pages via Outlet context)
   const [pinnedPlayerId, setPinnedPlayerId] = useState(null);
@@ -179,29 +177,9 @@ export default function Layout() {
     }
   };
 
-  const handleSelectNBAGame = async (game) => {
-    setActiveNBAGame(game);
-    setIsLoading(true);
-    try {
-      const [teamLinesRes, playerPropsRes] = await Promise.all([
-        api.get(`/nbabets/nbateamlines/${game.id}`),
-        api.get(`/nbabets/nbaplayerprops/${game.id}`),
-      ]);
-      setActiveNBAGameLines({ teamLines: teamLinesRes.data, playerProps: playerPropsRes.data });
-    } catch (error) {
-      console.error('Failed to fetch NBA game details:', error);
-      setActiveNBAGame(null);
-      setActiveNBAGameLines({ teamLines: [], playerProps: [] });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleCloseModal = () => {
     setActiveNFLGame(null);
     setActiveNFLGameLines({ teamLines: [], playerProps: [] });
-    setActiveNBAGame(null);
-    setActiveNBAGameLines({ teamLines: [], playerProps: [] });
   };
 
   useEffect(() => {
@@ -226,8 +204,7 @@ export default function Layout() {
     handleSearchChange,
     handleAddPlayer,
     handleRemovePlayer,
-    // game detail handlers (modal-based until Step 3)
-    handleSelectNBAGame,
+    // NFL games still use the modal (NBA games now route to /games/:id)
     handleSelectNFLGame,
     // betting / watchlist
     pinnedPlayerId,
@@ -270,7 +247,6 @@ export default function Layout() {
       </main>
 
       <GameModal game={activeNFLGame} gameLines={activeNFLGameLines} isLoading={isLoading} onClose={handleCloseModal} />
-      <GameModal game={activeNBAGame} gameLines={activeNBAGameLines} isLoading={isLoading} onClose={handleCloseModal} />
 
       <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 

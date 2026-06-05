@@ -1,11 +1,10 @@
 import React from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import TeamCard from '../components/TeamCard';
 
 export default function GamesPage() {
-  // NBA games still open the existing GameModal in Step 1; Step 3 rewires this
-  // to navigate to the full /games/:id detail page.
-  const { nbaGames, handleSelectNBAGame } = useOutletContext();
+  const { nbaGames } = useOutletContext();
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -13,7 +12,7 @@ export default function GamesPage() {
       {nbaGames.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {nbaGames.map((game) => (
-            <TeamCard key={game.id} game={game} onSelect={handleSelectNBAGame} />
+            <TeamCard key={game.id} game={game} onSelect={(g) => navigate(`/games/${g.id}`)} />
           ))}
         </div>
       ) : (

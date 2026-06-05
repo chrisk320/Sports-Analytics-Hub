@@ -199,6 +199,30 @@ export const getTodaysProps = async (req, res) => {
     }
 };
 
+// Get every prop for a single game (for the Game Detail page).
+// Includes player team_abbreviation so the UI can split rosters home vs away.
+export const getPropsByGame = async (req, res) => {
+    const { gameId } = req.params;
+    try {
+        const query = `
+            SELECT
+                pp.*,
+                p.full_name,
+                p.headshot_url,
+                p.team_abbreviation
+            FROM player_props pp
+            LEFT JOIN players p ON pp.player_id = p.player_id
+            WHERE pp.game_id = $1
+            ORDER BY pp.player_name, pp.market, pp.bookmaker;
+        `;
+        const result = await pool.query(query, [gameId]);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching props by game:', error);
+        res.status(500).json({ error: 'Failed to fetch props for game' });
+    }
+};
+
 // Get props for a specific player (for StatsModal)
 export const getPlayerProps = async (req, res) => {
     const { playerId } = req.params;

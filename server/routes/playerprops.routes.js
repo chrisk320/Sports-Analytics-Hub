@@ -1,11 +1,13 @@
 import express from 'express';
-import { getPlayerProps, getPlayerGameToday, refreshPlayerProps, getTodaysProps } from '../controllers/playerprops.controllers.js';
+import { getPlayerProps, getPlayerGameToday, refreshPlayerProps, getTodaysProps, getPropsByGame } from '../controllers/playerprops.controllers.js';
 
 const router = express.Router();
 
+// Specific routes BEFORE '/:playerId' or Express treats "today"/"game" as a playerId.
 // All of today's props (for Home dashboard + Compare).
-// NOTE: must be declared before '/:playerId' or Express treats "today" as a playerId.
 router.get('/today', getTodaysProps);
+// All props for one game (for Game Detail).
+router.get('/game/:gameId', getPropsByGame);
 
 // Get player props for a specific player
 router.get('/:playerId', getPlayerProps);
