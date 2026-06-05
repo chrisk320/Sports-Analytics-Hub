@@ -56,3 +56,20 @@ button:focus-visible {
   outline: 2px solid #a855f7;
   outline-offset: 2px;
 }
+
+/* Live ticker marquee (Home dashboard) */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 45s linear infinite;
+  will-change: transform;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

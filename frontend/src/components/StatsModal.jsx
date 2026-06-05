@@ -2,9 +2,19 @@ import React, { useState, useEffect } from 'react'; // Import useState
 import { User, X, Star, Loader } from 'lucide-react';
 import RecentGamesBarChart from './RecentGamesBarChart';
 
+const PROP_MARKETS = {
+  player_points: 'Points',
+  player_rebounds: 'Rebounds',
+  player_assists: 'Assists',
+  player_points_rebounds: 'PTS+REB',
+  player_points_assists: 'PTS+AST',
+  player_rebounds_assists: 'REB+AST',
+};
+
 const StatsModal = ({ player, playerData, isLoading, onClose, allTeams, onFilter }) => {
   const [activeStat, setActiveStat] = useState('pts');
   const [selectedOpponent, setSelectedOpponent] = useState('ALL');
+  const [selectedPropMarket, setSelectedPropMarket] = useState('player_points');
 
   useEffect(() => {
     if (player) {
@@ -18,7 +28,28 @@ const StatsModal = ({ player, playerData, isLoading, onClose, allTeams, onFilter
   const currentSeason = playerData?.seasonAverages;
   const chartGameLogs = playerData?.recentGameLogs || [];
   const tableGameLogs = playerData?.displayGameLogs || [];
+  const playerProps = playerData?.playerProps || [];
   const statInfo = { pts: 'Points', reb: 'Rebounds', ast: 'Assists' };
+
+  // Group player props by market and bookmaker
+  const groupedProps = playerProps.reduce((acc, prop) => {
+    if (!acc[prop.market]) acc[prop.market] = {};
+    if (!acc[prop.market][prop.bookmaker]) acc[prop.market][prop.bookmaker] = prop;
+    return acc;
+  }, {});
+
+  // Get game info from first prop if available
+  const gameInfo = playerProps.length > 0 ? {
+    home_team: playerProps[0].home_team,
+    away_team: playerProps[0].away_team,
+    game_date: playerProps[0].game_date
+  } : null;
+
+  const formatOdds = (price) => {
+    if (!price) return '-';
+    if (price > 0) return `+${price}`;
+    return price.toString();
+  };
 
   const handleOpponentChange = (e) => {
     const opponentAbbr = e.target.value;
@@ -136,6 +167,70 @@ const StatsModal = ({ player, playerData, isLoading, onClose, allTeams, onFilter
                   </table>
                 </div>
               </div>
+
+              {/* Player Props Section */}
+              {playerProps.length > 0 && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-purple-500">
+                      Today's Player Props
+                    </h3>
+                    {gameInfo && (
+                      <span className="text-sm text-slate-400">
+                        {gameInfo.away_team} @ {gameInfo.home_team}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Market Selector Tabs */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {Object.entries(PROP_MARKETS).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedPropMarket(key)}
+                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          selectedPropMarket === key
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Props Grid by Bookmaker */}
+                  {groupedProps[selectedPropMarket] ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(groupedProps[selectedPropMarket]).map(([bookmaker, prop]) => (
+                        <div key={bookmaker} className="bg-slate-800 rounded-lg p-4">
+                          <h4 className="text-sm font-bold text-purple-500 uppercase tracking-wide mb-3 text-center border-b border-slate-700 pb-2">
+                            {bookmaker.replace('_', ' ')}
+                          </h4>
+                          <div className="flex justify-between gap-4 text-sm">
+                            {prop.over_line && (
+                              <div className="flex-1 flex justify-between bg-slate-700 rounded px-3 py-2">
+                                <span className="text-emerald-400 font-medium">O {prop.over_line}</span>
+                                <span className="text-slate-50">{formatOdds(prop.over_odds)}</span>
+                              </div>
+                            )}
+                            {prop.under_line && (
+                              <div className="flex-1 flex justify-between bg-slate-700 rounded px-3 py-2">
+                                <span className="text-rose-400 font-medium">U {prop.under_line}</span>
+                                <span className="text-slate-50">{formatOdds(prop.under_odds)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-slate-400">No {PROP_MARKETS[selectedPropMarket]} props available.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
