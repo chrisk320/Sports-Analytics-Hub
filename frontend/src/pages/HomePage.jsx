@@ -109,7 +109,7 @@ export default function HomePage() {
   const activeProps = propsByPlayerId.get(activePlayerId) || [];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-[1536px] space-y-6">
       <LiveTicker edges={edges} lastUpdated={lastUpdated} />
 
       {/* Title + search + market toggle */}
