@@ -40,10 +40,22 @@ export const getSeasonAverages = async (req, res) => {
     const { playerId } = req.params;
     console.log(`Received request for season averages for player ID: ${playerId}`);
     try {
+        // Computed live from game logs (the player_season_stats table was
+        // dropped — only the retired NBA.com scraper ever populated it, and
+        // these averages are fully derivable from the now-complete game logs).
         const query = `
-            SELECT * FROM player_season_stats 
-            WHERE player_id = $1 
-            ORDER BY season DESC
+            SELECT
+                g.season,
+                p.team_abbreviation,
+                COUNT(*)::int                          AS games_played,
+                ROUND(AVG(g.pts)::numeric, 1)::float   AS points_avg,
+                ROUND(AVG(g.reb)::numeric, 1)::float   AS rebounds_avg,
+                ROUND(AVG(g.ast)::numeric, 1)::float   AS assists_avg
+            FROM player_game_logs g
+            JOIN players p ON p.player_id = g.player_id
+            WHERE g.player_id = $1
+            GROUP BY g.season, p.team_abbreviation
+            ORDER BY g.season DESC
             LIMIT 1;
         `;
         const result = await pool.query(query, [playerId]);

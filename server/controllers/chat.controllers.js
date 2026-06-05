@@ -10,9 +10,14 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    });
+} else {
+    console.warn('Warning: OPENAI_API_KEY not set. Chat feature will be disabled.');
+}
 
 const executeQuery = async (query, params = []) => {
     try {
@@ -102,6 +107,10 @@ const getSeasonStartDate = () => {
 
 export const chatWithAI = async (req, res) => {
     const { message } = req.body;
+
+    if (!openai) {
+        return res.status(503).json({ error: 'Chat service unavailable. OPENAI_API_KEY not configured.' });
+    }
 
     if (!message) {
         return res.status(400).json({ error: 'Message is required' });
