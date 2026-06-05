@@ -17,9 +17,14 @@ import sys
 import time
 import requests
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import psycopg
 from dotenv import load_dotenv
+
+# NBA's reference timezone. A game tipping in the evening ET is already past
+# midnight UTC, so dating it by the UTC day would push it to "tomorrow".
+EASTERN = ZoneInfo("America/New_York")
 
 # Markets to fetch
 MARKETS = [
@@ -111,9 +116,9 @@ def link_player_name_to_id(conn, player_name):
 
 
 def clear_old_props(conn):
-    """Delete props from previous days."""
+    """Delete props from previous days (Eastern calendar day)."""
     with conn.cursor() as cur:
-        cur.execute("DELETE FROM player_props WHERE game_date < CURRENT_DATE")
+        cur.execute("DELETE FROM player_props WHERE game_date < (NOW() AT TIME ZONE 'America/New_York')::date")
         deleted = cur.rowcount
         conn.commit()
         print(f"Cleared {deleted} old prop entries")
@@ -129,6 +134,7 @@ def store_player_prop(conn, prop_data):
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (player_name, game_id, market, bookmaker)
             DO UPDATE SET
+                game_date = EXCLUDED.game_date,
                 over_line = EXCLUDED.over_line,
                 over_odds = EXCLUDED.over_odds,
                 under_line = EXCLUDED.under_line,
@@ -171,7 +177,9 @@ def main():
             game_id = event['id']
             home_team = event['home_team']
             away_team = event['away_team']
-            game_date = event['commence_time'][:10]  # Extract YYYY-MM-DD
+            # Date by US Eastern calendar day, not the UTC day (see EASTERN note).
+            commence = datetime.fromisoformat(event['commence_time'].replace('Z', '+00:00'))
+            game_date = commence.astimezone(EASTERN).date().isoformat()
 
             print(f"Fetching props for: {away_team} @ {home_team} ({game_date})")
 

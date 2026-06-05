@@ -73,6 +73,7 @@ async function storePlayerProp(prop) {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
         ON CONFLICT (player_name, game_id, market, bookmaker)
         DO UPDATE SET
+            game_date = EXCLUDED.game_date,
             over_line = EXCLUDED.over_line,
             over_odds = EXCLUDED.over_odds,
             under_line = EXCLUDED.under_line,
@@ -101,8 +102,8 @@ export const refreshPlayerProps = async (req, res) => {
     console.log('Starting player props refresh...');
 
     try {
-        // Clear old props from previous days
-        await pool.query(`DELETE FROM player_props WHERE game_date < CURRENT_DATE`);
+        // Clear old props from previous days (Eastern — the NBA's reference tz)
+        await pool.query(`DELETE FROM player_props WHERE game_date < (NOW() AT TIME ZONE 'America/New_York')::date`);
 
         // Fetch all NBA events
         const events = await fetchNBAEvents();
@@ -111,7 +112,10 @@ export const refreshPlayerProps = async (req, res) => {
         let totalProps = 0;
 
         for (const event of events) {
-            const gameDate = new Date(event.commence_time).toISOString().split('T')[0];
+            // Date the game by its US Eastern calendar day, not the UTC day — a
+            // game tipping 8pm ET is already past midnight UTC, which would push
+            // it to "tomorrow". en-CA formats as YYYY-MM-DD.
+            const gameDate = new Date(event.commence_time).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
             try {
                 const propsData = await fetchPropsForEvent(event.id);
@@ -175,7 +179,10 @@ export const refreshPlayerProps = async (req, res) => {
     }
 };
 
-// Get every player prop for today's slate (for Home dashboard + Compare).
+// Get every player prop for the current slate (for Home dashboard + Compare).
+// "Current slate" = the nearest game day on/after today in US Eastern (the NBA's
+// reference tz). This populates the dashboard on off-days (shows the next slate)
+// and surfaces tonight's games even when their game_date was derived in UTC.
 // Joined with players for full_name + headshot_url so the UI can render cards.
 export const getTodaysProps = async (req, res) => {
     try {
@@ -186,7 +193,10 @@ export const getTodaysProps = async (req, res) => {
                 p.headshot_url
             FROM player_props pp
             LEFT JOIN players p ON pp.player_id = p.player_id
-            WHERE pp.game_date = CURRENT_DATE
+            WHERE pp.game_date = (
+                SELECT MIN(game_date) FROM player_props
+                WHERE game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
+            )
             ORDER BY pp.game_id, pp.player_name, pp.market, pp.bookmaker;
         `;
 
@@ -229,6 +239,7 @@ export const getPlayerProps = async (req, res) => {
     console.log(`Fetching props for player ID: ${playerId}`);
 
     try {
+        // The player's next slate on/after today (Eastern) — see getTodaysProps.
         const query = `
             SELECT
                 pp.*,
@@ -236,7 +247,11 @@ export const getPlayerProps = async (req, res) => {
             FROM player_props pp
             LEFT JOIN players p ON pp.player_id = p.player_id
             WHERE pp.player_id = $1
-              AND pp.game_date = CURRENT_DATE
+              AND pp.game_date = (
+                SELECT MIN(game_date) FROM player_props
+                WHERE player_id = $1
+                  AND game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
+              )
             ORDER BY pp.market, pp.bookmaker;
         `;
 
@@ -252,7 +267,11 @@ export const getPlayerProps = async (req, res) => {
                 const nameQuery = `
                     SELECT * FROM player_props
                     WHERE LOWER(player_name) = LOWER($1)
-                      AND game_date = CURRENT_DATE
+                      AND game_date = (
+                        SELECT MIN(game_date) FROM player_props
+                        WHERE LOWER(player_name) = LOWER($1)
+                          AND game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
+                      )
                     ORDER BY market, bookmaker;
                 `;
                 const nameResult = await pool.query(nameQuery, [playerName]);
@@ -274,9 +293,11 @@ export const getPlayerGameToday = async (req, res) => {
 
     try {
         const query = `
-            SELECT DISTINCT game_id, game_date, home_team, away_team
+            SELECT game_id, game_date, home_team, away_team
             FROM player_props
-            WHERE player_id = $1 AND game_date = CURRENT_DATE
+            WHERE player_id = $1
+              AND game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
+            ORDER BY game_date
             LIMIT 1;
         `;
 
