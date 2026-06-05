@@ -4,7 +4,6 @@ import { Outlet } from 'react-router-dom';
 import { api } from './lib/api';
 import { DEFAULT_BOOKS } from './lib/odds';
 import Header from './components/Header';
-import StatsModal from './components/StatsModal';
 import GameModal from './components/GameModal';
 import ChatBot from './components/ChatBot';
 
@@ -32,13 +31,6 @@ export default function Layout() {
 
   const [allPlayers, setAllPlayers] = useState([]);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
-  const [activeNBAPlayer, setActiveNBAPlayer] = useState(null);
-  const [activeNBAPlayerData, setActiveNBAPlayerData] = useState({
-    seasonAverages: null,
-    recentGameLogs: [],
-    displayGameLogs: [],
-    playerProps: [],
-  });
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -139,23 +131,6 @@ export default function Layout() {
     }
   };
 
-  const handleFilterByOpponent = async (playerId, opponentAbbr) => {
-    if (!playerId || !opponentAbbr) return;
-    if (opponentAbbr === 'ALL') {
-      setActiveNBAPlayerData((prev) => ({ ...prev, displayGameLogs: prev.recentGameLogs }));
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const response = await api.get(`/players/${playerId}/gamelogs/${opponentAbbr}`);
-      setActiveNBAPlayerData((prev) => ({ ...prev, displayGameLogs: response.data }));
-    } catch (error) {
-      console.error(`Failed to fetch game logs against ${opponentAbbr}:`, error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleAddPlayer = async (player) => {
     if (!user) {
       alert('Please sign in to add players.');
@@ -183,34 +158,6 @@ export default function Layout() {
     } catch (error) {
       console.error('Failed to remove favorite:', error);
       setSelectedPlayers(originalPlayers);
-    }
-  };
-
-  const handleSelectPlayer = async (player) => {
-    setActiveNBAPlayer(player);
-    setIsLoading(true);
-    try {
-      const [averagesRes, gameLogsRes, playerPropsRes] = await Promise.all([
-        api.get(`/players/${player.player_id}/season-averages`),
-        api.get(`/players/${player.player_id}/full-gamelogs`),
-        api.get(`/playerprops/${player.player_id}`).catch(() => ({ data: [] })),
-      ]);
-      setActiveNBAPlayerData({
-        seasonAverages: averagesRes.data,
-        recentGameLogs: gameLogsRes.data,
-        displayGameLogs: gameLogsRes.data,
-        playerProps: playerPropsRes.data || [],
-      });
-    } catch (error) {
-      console.error('Failed to fetch player details:', error);
-      setActiveNBAPlayerData({
-        seasonAverages: null,
-        recentGameLogs: [],
-        displayGameLogs: [],
-        playerProps: [],
-      });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -251,13 +198,6 @@ export default function Layout() {
   };
 
   const handleCloseModal = () => {
-    setActiveNBAPlayer(null);
-    setActiveNBAPlayerData({
-      seasonAverages: null,
-      recentGameLogs: [],
-      displayGameLogs: [],
-      playerProps: [],
-    });
     setActiveNFLGame(null);
     setActiveNFLGameLines({ teamLines: [], playerProps: [] });
     setActiveNBAGame(null);
@@ -286,8 +226,7 @@ export default function Layout() {
     handleSearchChange,
     handleAddPlayer,
     handleRemovePlayer,
-    // detail handlers (modal-based for now; routed in later steps)
-    handleSelectPlayer,
+    // game detail handlers (modal-based until Step 3)
     handleSelectNBAGame,
     handleSelectNFLGame,
     // betting / watchlist
@@ -329,15 +268,6 @@ export default function Layout() {
           </svg>
         </button>
       </main>
-
-      <StatsModal
-        player={activeNBAPlayer}
-        playerData={activeNBAPlayerData}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        allTeams={allTeams}
-        onFilter={handleFilterByOpponent}
-      />
 
       <GameModal game={activeNFLGame} gameLines={activeNFLGameLines} isLoading={isLoading} onClose={handleCloseModal} />
       <GameModal game={activeNBAGame} gameLines={activeNBAGameLines} isLoading={isLoading} onClose={handleCloseModal} />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { User } from 'lucide-react';
 import MiniSparkline from './MiniSparkline';
 import {
@@ -63,8 +64,14 @@ export default function WatchlistCard({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-bold text-slate-50">{player.full_name}</h3>
-          <p className="text-xs text-slate-500">{MARKETS[marketId]?.label} market</p>
+          <Link
+            to={`/players/${player.player_id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block truncate font-bold text-slate-50 hover:text-purple-300"
+          >
+            {player.full_name}
+          </Link>
+          <p className="text-xs text-slate-500">{MARKETS[marketId]?.label} market · click to pin</p>
         </div>
         {onRemove && (
           <button

@@ -47,12 +47,18 @@ export const getSeasonAverages = async (req, res) => {
             SELECT
                 g.season,
                 p.team_abbreviation,
-                COUNT(*)::int                          AS games_played,
-                ROUND(AVG(g.pts)::numeric, 1)::float   AS points_avg,
-                ROUND(AVG(g.reb)::numeric, 1)::float   AS rebounds_avg,
-                ROUND(AVG(g.ast)::numeric, 1)::float   AS assists_avg
+                COUNT(*)::int                                        AS games_played,
+                ROUND(AVG(g.pts)::numeric, 1)::float                 AS points_avg,
+                ROUND(AVG(g.reb)::numeric, 1)::float                 AS rebounds_avg,
+                ROUND(AVG(g.ast)::numeric, 1)::float                 AS assists_avg,
+                ROUND(AVG(g.stl)::numeric, 1)::float                 AS steals_avg,
+                ROUND(AVG(g.blk)::numeric, 1)::float                 AS blocks_avg,
+                ROUND(AVG(a.true_shooting_percentage)::numeric, 1)::float AS ts_pct,
+                ROUND(AVG(a.usage_percentage)::numeric, 1)::float    AS usg_pct,
+                ROUND(AVG(a.offensive_rating)::numeric, 1)::float    AS off_rating
             FROM player_game_logs g
             JOIN players p ON p.player_id = g.player_id
+            LEFT JOIN advanced_box_scores a ON a.game_log_id = g.game_log_id
             WHERE g.player_id = $1
             GROUP BY g.season, p.team_abbreviation
             ORDER BY g.season DESC
