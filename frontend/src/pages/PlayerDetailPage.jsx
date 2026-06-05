@@ -1,0 +1,369 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { User, Star, Loader, ChevronLeft } from 'lucide-react';
+import { api } from '../lib/api';
+import { MARKETS, summarizeMarket, avgFromLogs } from '../lib/odds';
+import RecentGamesBarChart from '../components/RecentGamesBarChart';
+import MarketToggle from '../components/home/MarketToggle';
+import TonightsPropsSidebar from '../components/player/TonightsPropsSidebar';
+
+const fallbackImg = (e) => {
+  e.target.src = 'https://cdn.nba.com/headshots/nba/latest/1040x760/fallback.png';
+};
+
+function StatCell({ label, value, suffix = '', title }) {
+  return (
+    <div
+      title={title}
+      className={`rounded-lg bg-slate-800/60 px-3 py-2 text-center ${title ? 'cursor-help' : ''}`}
+    >
+      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="font-mono tabular-nums text-lg font-bold text-slate-50">
+        {value != null ? value : '—'}
+        {value != null && suffix}
+      </div>
+    </div>
+  );
+}
+
+// Basketball Reference's per-game ORtg/DRtg are INDIVIDUAL ratings (Dean Oliver:
+// points produced/allowed per 100 individual possessions) — not NBA.com's
+// on-court team ratings. Surfaced as tooltips + a footnote so they're not confused.
+const RATING_NOTE =
+  "Basketball Reference individual rating (points per 100 individual possessions) — not NBA.com's on-court team rating.";
+
+export default function PlayerDetailPage() {
+  const { playerId } = useParams();
+  const { allPlayers, allTeams, addToSlip, selectedPlayers, handleAddPlayer, handleRemovePlayer } =
+    useOutletContext();
+
+  const [loading, setLoading] = useState(true);
+  const [fetchedPlayer, setFetchedPlayer] = useState(null);
+  const [season, setSeason] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [props, setProps] = useState([]);
+  const [gameInfo, setGameInfo] = useState(null);
+  const [chartMarket, setChartMarket] = useState('PTS');
+  const [selectedOpp, setSelectedOpp] = useState('ALL');
+  const [displayLogs, setDisplayLogs] = useState([]);
+  const [oppSplit, setOppSplit] = useState(null);
+
+  const playerFromList = useMemo(
+    () => allPlayers.find((p) => String(p.player_id) === String(playerId)),
+    [allPlayers, playerId]
+  );
+  const player = playerFromList || fetchedPlayer;
+
+  // Core data fetch (keyed on playerId only)
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setSelectedOpp('ALL');
+    setChartMarket('PTS');
+    (async () => {
+      const [seasonRes, logsRes, propsRes, gameRes, playerRes] = await Promise.all([
+        api.get(`/players/${playerId}/season-averages`).catch(() => ({ data: null })),
+        api.get(`/players/${playerId}/full-gamelogs`).catch(() => ({ data: [] })),
+        api.get(`/playerprops/${playerId}`).catch(() => ({ data: [] })),
+        api.get(`/playerprops/${playerId}/game`).catch(() => ({ data: null })),
+        api.get(`/players/${playerId}`).catch(() => ({ data: null })),
+      ]);
+      if (cancelled) return;
+      setSeason(seasonRes.data);
+      setLogs(logsRes.data || []);
+      setDisplayLogs(logsRes.data || []);
+      setProps(propsRes.data || []);
+      setGameInfo(gameRes.data);
+      setFetchedPlayer(playerRes.data);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [playerId]);
+
+  // Resolve tonight's opponent + fetch the player's splits vs them
+  useEffect(() => {
+    if (!gameInfo || !season?.team_abbreviation || !allTeams.length) {
+      setOppSplit(null);
+      return;
+    }
+    const myName = allTeams.find((t) => t.team_abbreviation === season.team_abbreviation)?.team_name;
+    const oppName = gameInfo.home_team === myName ? gameInfo.away_team : gameInfo.home_team;
+    const oppAbbr = allTeams.find((t) => t.team_name === oppName)?.team_abbreviation;
+    if (!oppAbbr) {
+      setOppSplit(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get(`/players/${playerId}/gamelogs/${oppAbbr}`)
+      .then((res) => !cancelled && setOppSplit({ opp: oppAbbr, logs: res.data || [] }))
+      .catch(() => !cancelled && setOppSplit({ opp: oppAbbr, logs: [] }));
+    return () => {
+      cancelled = true;
+    };
+  }, [gameInfo, season, allTeams, playerId]);
+
+  const handleOpp = async (e) => {
+    const opp = e.target.value;
+    setSelectedOpp(opp);
+    if (opp === 'ALL') {
+      setDisplayLogs(logs);
+      return;
+    }
+    try {
+      const res = await api.get(`/players/${playerId}/gamelogs/${opp}`);
+      setDisplayLogs(res.data || []);
+    } catch {
+      setDisplayLogs([]);
+    }
+  };
+
+  const isFav = selectedPlayers.some((p) => String(p.player_id) === String(playerId));
+  const toggleFav = () => {
+    if (!player) return;
+    isFav ? handleRemovePlayer(player.player_id) : handleAddPlayer(player);
+  };
+
+  const chartSummary = summarizeMarket(props, chartMarket);
+  const chartLine = chartSummary?.line ?? null;
+  const last10 = logs.slice(0, 10);
+  const l10avg = avgFromLogs(last10, chartMarket);
+  const oppAvg = oppSplit ? avgFromLogs(oppSplit.logs, chartMarket) : null;
+
+  const addHeadlineToSlip = () => {
+    const s = summarizeMarket(props, 'PTS') || summarizeMarket(props, chartMarket);
+    if (!s?.bestOver || !player) return;
+    addToSlip({
+      playerId: player.player_id,
+      playerName: player.full_name,
+      market: s.marketId,
+      side: 'over',
+      line: s.line,
+      book: s.bestOver.bookmaker,
+      price: s.bestOver.over_odds,
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader className="h-10 w-10 animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="mx-auto max-w-3xl py-20 text-center text-slate-400">
+        <p>Player not found.</p>
+        <Link to="/" className="mt-4 inline-block text-purple-400 hover:text-purple-300">
+          ← Back to dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-[1536px] space-y-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-slate-400">
+        <Link to="/" className="flex items-center gap-1 hover:text-slate-200">
+          <ChevronLeft className="h-4 w-4" /> <Star className="h-3.5 w-3.5" /> My players
+        </Link>
+        <span className="text-slate-600">/</span>
+        <span className="text-slate-200">{player.full_name}</span>
+      </div>
+
+      {/* Hero */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-4">
+            <div className="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-purple-500 bg-slate-800 flex items-center justify-center">
+              {player.headshot_url ? (
+                <img src={player.headshot_url} alt={player.full_name} className="h-full w-full object-cover" onError={fallbackImg} />
+              ) : (
+                <User className="h-14 w-14 text-slate-400" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">{player.full_name}</h1>
+              <p className="text-slate-400">
+                {season?.team_abbreviation || player.team_abbreviation || '—'}
+                {season?.season ? ` · ${season.season}` : ''}
+                {season?.games_played ? ` · ${season.games_played} GP` : ''}
+              </p>
+              {gameInfo && (
+                <p className="mt-1 text-xs text-amber-300">Tonight: {gameInfo.away_team} @ {gameInfo.home_team}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            <button
+              onClick={addHeadlineToSlip}
+              disabled={!summarizeMarket(props, 'PTS')?.bestOver}
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ＋ slip
+            </button>
+            <button
+              onClick={toggleFav}
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                isFav ? 'bg-amber-500 text-white hover:bg-amber-400' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+              }`}
+            >
+              <Star className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} /> {isFav ? 'Favorited' : 'Favorite'}
+            </button>
+          </div>
+        </div>
+
+        {/* Stat strip */}
+        <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <StatCell label="PTS" value={season?.points_avg} />
+          <StatCell label="REB" value={season?.rebounds_avg} />
+          <StatCell label="AST" value={season?.assists_avg} />
+          <StatCell label="STL" value={season?.steals_avg} />
+          <StatCell label="TS%" value={season?.ts_pct} />
+          <StatCell label="USG%" value={season?.usg_pct} />
+          <StatCell label="ORtg" value={season?.off_rating} title={RATING_NOTE} />
+        </div>
+      </div>
+
+      {/* Body: chart + logs (main) | props + matchup (sidebar) */}
+      <div className="flex flex-col gap-6 xl:flex-row">
+        <div className="min-w-0 flex-1 space-y-6">
+          {/* Chart card */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-50">Last {last10.length} games · {MARKETS[chartMarket]?.label}</h3>
+                <p className="text-xs text-slate-500">
+                  L10 avg <span className="font-mono tabular-nums text-slate-300">{l10avg != null ? l10avg.toFixed(1) : '—'}</span>
+                  {oppAvg != null && (
+                    <> · vs {oppSplit.opp} <span className="font-mono tabular-nums text-slate-300">{oppAvg.toFixed(1)}</span></>
+                  )}
+                  {chartLine != null && (
+                    <> · line <span className="font-mono tabular-nums text-amber-300">{chartLine}</span></>
+                  )}
+                </p>
+              </div>
+              <MarketToggle value={chartMarket} onChange={setChartMarket} />
+            </div>
+            <RecentGamesBarChart data={last10} marketId={chartMarket} line={chartLine} />
+          </div>
+
+          {/* Game logs table */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-bold text-slate-50">
+                {selectedOpp === 'ALL' ? 'Recent game logs' : `Game logs vs ${selectedOpp}`}
+              </h3>
+              <div className="flex items-center gap-2">
+                <label htmlFor="opp" className="text-xs text-slate-400">Opponent</label>
+                <select
+                  id="opp"
+                  value={selectedOpp}
+                  onChange={handleOpp}
+                  className="rounded-lg border border-slate-700 bg-slate-800 p-2 text-sm text-slate-50 focus:border-purple-500 focus:outline-none"
+                >
+                  <option value="ALL">All teams</option>
+                  {allTeams.map((t) => (
+                    <option key={t.team_abbreviation} value={t.team_abbreviation}>{t.team_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase text-slate-500">
+                    <th className="px-3 py-2 font-medium">Date</th>
+                    <th className="px-3 py-2 font-medium">Opp</th>
+                    <th className="px-3 py-2 text-right font-medium">MIN</th>
+                    <th className="px-3 py-2 text-right font-medium">PTS</th>
+                    <th className="px-3 py-2 text-right font-medium">REB</th>
+                    <th className="px-3 py-2 text-right font-medium">AST</th>
+                    <th className="px-3 py-2 text-right font-medium">STL</th>
+                    <th className="px-3 py-2 text-right font-medium">USG%</th>
+                    <th className="px-3 py-2 text-right font-medium">TS%</th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      <span title={RATING_NOTE} className="cursor-help underline decoration-dotted decoration-slate-600 underline-offset-2">ORtg</span>
+                    </th>
+                    <th className="px-3 py-2 text-right font-medium">
+                      <span title={RATING_NOTE} className="cursor-help underline decoration-dotted decoration-slate-600 underline-offset-2">DRtg</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono tabular-nums">
+                  {displayLogs.map((log) => (
+                    <tr key={log.game_log_id} className="border-t border-slate-800/70 hover:bg-slate-800/40">
+                      <td className="px-3 py-2 font-sans text-slate-300">
+                        {new Date(log.game_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}
+                      </td>
+                      <td className="px-3 py-2 font-sans text-slate-300">{log.opponent}</td>
+                      <td className="px-3 py-2 text-right text-slate-400">{log.min}</td>
+                      <td className="px-3 py-2 text-right font-bold text-slate-50">{log.pts}</td>
+                      <td className="px-3 py-2 text-right text-slate-200">{log.reb}</td>
+                      <td className="px-3 py-2 text-right text-slate-200">{log.ast}</td>
+                      <td className="px-3 py-2 text-right text-slate-200">{log.stl}</td>
+                      <td className="px-3 py-2 text-right text-slate-400">{log.usage_percentage ?? '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-400">{log.true_shooting_percentage ?? '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-400">{log.offensive_rating ?? '—'}</td>
+                      <td className="px-3 py-2 text-right text-slate-400">{log.defensive_rating ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {displayLogs.length === 0 && (
+                <p className="py-6 text-center text-sm text-slate-500">No games found{selectedOpp !== 'ALL' ? ` vs ${selectedOpp}` : ''}.</p>
+              )}
+            </div>
+            <p className="mt-3 text-[11px] leading-snug text-slate-500">
+              ORtg/DRtg are Basketball Reference <span className="text-slate-400">individual</span> ratings (points
+              produced/allowed per 100 individual possessions) — not NBA.com's on-court team ratings, so they read
+              differently than the numbers on nba.com.
+            </p>
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6 xl:w-[360px] xl:shrink-0">
+          <TonightsPropsSidebar
+            playerId={player.player_id}
+            playerName={player.full_name}
+            props={props}
+            logs={logs}
+            gameInfo={gameInfo}
+            onAddToSlip={addToSlip}
+          />
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+            <h3 className="mb-2 font-bold text-slate-50">Matchup</h3>
+            {gameInfo && oppSplit ? (
+              <div className="text-sm text-slate-300">
+                <p className="text-slate-400">
+                  vs <span className="font-semibold text-slate-100">{oppSplit.opp}</span> · last {oppSplit.logs.length} meetings
+                </p>
+                {oppSplit.logs.length > 0 ? (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    <StatCell label="PTS" value={avgFromLogs(oppSplit.logs, 'PTS')?.toFixed(1)} />
+                    <StatCell label="REB" value={avgFromLogs(oppSplit.logs, 'REB')?.toFixed(1)} />
+                    <StatCell label="AST" value={avgFromLogs(oppSplit.logs, 'AST')?.toFixed(1)} />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-slate-500">No prior meetings on record this season.</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No game scheduled — matchup splits appear on game days.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

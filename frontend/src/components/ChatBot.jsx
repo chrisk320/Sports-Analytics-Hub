@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000';
+import { api } from '../lib/api';
 
 const ChatBot = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
@@ -38,7 +36,7 @@ const ChatBot = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat`, {
+      const response = await api.post('/chat', {
         message: inputMessage
       });
 
