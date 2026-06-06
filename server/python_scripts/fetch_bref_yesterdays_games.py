@@ -165,6 +165,7 @@ def fetch_box_scores_for_game(target_date, home_team):
     try:
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
+        response.encoding = "utf-8"  # BBRef is UTF-8; requests defaults text/* to Latin-1 -> mojibake names
 
         html = response.text
         players_stats = []

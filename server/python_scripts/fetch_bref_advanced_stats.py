@@ -119,6 +119,7 @@ def fetch_advanced_box_score(target_date, home_team):
     try:
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
+        response.encoding = "utf-8"  # BBRef is UTF-8; requests defaults text/* to Latin-1 -> mojibake names
 
         # Parse the HTML to find advanced stats tables
         # Basketball Reference has tables with id like "box-{TEAM}-game-advanced"
