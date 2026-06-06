@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Outlet } from 'react-router-dom';
 import { api } from './lib/api';
-import { decodeJwt } from './lib/jwt';
 import { DEFAULT_BOOKS } from './lib/odds';
 import Header from './components/Header';
 import GameModal from './components/GameModal';
@@ -14,14 +14,15 @@ export default function Layout() {
   });
   const [user, setUser] = useState(null);
 
-  // GIS returns an ID-token credential (JWT). Decode it for the user's profile;
-  // `sub` is the stable id we key favorites on. Old access_token-shaped tokens
-  // (no `credential`) simply resolve to logged-out.
   useEffect(() => {
-    const claims = token?.credential ? decodeJwt(token.credential) : null;
-    if (claims) {
+    if (token) {
       localStorage.setItem('authToken', JSON.stringify(token));
-      setUser({ id: claims.sub, name: claims.name, email: claims.email, picture: claims.picture });
+      axios
+        .get(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token.access_token}`, {
+          headers: { Authorization: `Bearer ${token.access_token}`, Accept: 'application/json' },
+        })
+        .then((res) => setUser(res.data))
+        .catch((err) => console.log(err));
     } else {
       localStorage.removeItem('authToken');
       setUser(null);
