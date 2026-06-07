@@ -32,18 +32,21 @@ Team markets — spread, total, and moneyline with the best price per side highl
 │   React SPA     │────▶│  Express API    │────▶│   PostgreSQL    │
 │   (Vercel)      │     │   (Render)      │     │     (Neon)      │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                          ▲
-                                                          │ writes
-                                               ┌──────────┴──────────┐
-                                               │  Local cron (Mac)   │
-                                               │ Basketball Reference│
-                                               │    daily scrape     │
-                                               └─────────────────────┘
+                                                          ▲ writes
+                          ┌───────────────────────────────┴──────────────────────────────┐
+              ┌───────────┴──────────┐                                     ┌──────────────┴───────────┐
+              │   Local cron (Mac)   │                                     │      GitHub Actions      │
+              │ Basketball Reference │                                     │       The Odds API       │
+              │  game logs · daily   │                                     │   player props · daily   │
+              └──────────────────────┘                                     └──────────────────────────┘
 ```
 
-### 1. Data Pipeline (Python · Basketball Reference)
+### 1. Data Pipeline (Python)
 
-Player stats are scraped from [Basketball Reference](https://www.basketball-reference.com) box-score pages (the `nba_api` was dropped because its endpoints 403 from datacenter IPs; it's now only used for headshots).
+Two sources feed the database on a schedule:
+
+- **Game logs + advanced box scores** — scraped from [Basketball Reference](https://www.basketball-reference.com) box-score pages (the `nba_api` was dropped because its endpoints 403 from datacenter IPs; it's now only used for headshots).
+- **Player props** — pulled from The Odds API.
 
 | Script | Purpose |
 |--------|---------|
@@ -55,13 +58,20 @@ Player stats are scraped from [Basketball Reference](https://www.basketball-refe
 | `fetch_player_props.py` | Player props from The Odds API → `player_props` table |
 | `daily_fetch.sh` | Local cron entrypoint → runs `fetch_bref_all_stats.py --yesterday` |
 
-**Why local cron, not GitHub Actions:** Basketball Reference returns `403 Forbidden` to GitHub's datacenter IPs, so a cloud scraper fetches nothing. The pipeline runs from a residential IP via `cron` on the dev machine:
+**Game-log scrape → local cron (not GitHub Actions).** Basketball Reference returns `403 Forbidden` to GitHub's datacenter IPs, so a cloud scraper fetches nothing. It runs from a residential IP via `cron` on the dev machine:
 
 ```cron
 0 6 * * * /Users/<you>/repos/nbastats/server/python_scripts/daily_fetch.sh >> /tmp/nba-fetch.log 2>&1
 ```
 
 > Note: `--yesterday` fetches a single day, so if the machine is asleep at run time that day is skipped — use `fetch_bref_backfill.py --start <date>` to fill gaps.
+
+**Player props → GitHub Actions.** The Odds API is a keyed commercial API that accepts any IP (no 403), so props refresh in the cloud — which also means they don't depend on the dev machine being awake near tip-off. [`.github/workflows/props-fetch.yml`](.github/workflows/props-fetch.yml) runs `fetch_player_props.py` twice a day (plus a manual trigger), using the repo's `ODDS_API_KEY` and `DATABASE_URL` secrets:
+
+```cron
+0 20 * * *   # 4pm EDT / 3pm EST — lines posted for the slate
+0 23 * * *   # 7pm EDT / 6pm EST — sharper lines near tip-off
+```
 
 ### 2. Database (PostgreSQL on Neon)
 
@@ -127,7 +137,7 @@ Shared betting math (American-odds ↔ implied prob/decimal, best price, de-vig,
 | **Frontend** | React 19, Vite, Tailwind CSS 4, React Router 7, Recharts 3, Axios |
 | **Backend** | Node.js (ES Modules), Express.js |
 | **Database** | PostgreSQL — [Neon](https://neon.tech) serverless |
-| **Data Pipeline** | Python (Basketball Reference scraping), local `cron` |
+| **Data Pipeline** | Python — Basketball Reference scrape (local `cron`) + The Odds API props (GitHub Actions) |
 | **AI** | OpenAI GPT-3.5-turbo |
 | **Auth** | Google OAuth 2.0 (`@react-oauth/google`) |
 | **External APIs** | The Odds API, Basketball Reference, `nba_api` (headshots) |
