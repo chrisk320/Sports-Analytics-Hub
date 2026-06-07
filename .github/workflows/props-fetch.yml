@@ -1,0 +1,43 @@
+name: Player Props Fetch
+
+# Refreshes player props from The Odds API into the player_props table.
+# Unlike the Basketball Reference scrape (which 403s from datacenter IPs and so
+# runs via local cron), The Odds API is a keyed commercial API that accepts any
+# IP, so this runs reliably in the cloud — and a cloud runner doesn't depend on
+# the dev machine being awake near tip-off.
+#
+# Schedule is UTC (GitHub does not adjust for DST), so ET times drift ~1h
+# between EDT and EST — fine for odds.
+#   20:00 UTC = 4pm EDT / 3pm EST  (afternoon: lines posted for the slate)
+#   23:00 UTC = 7pm EDT / 6pm EST  (evening: sharper lines near tip-off)
+# Each run consumes Odds API credits (~1 call per game), so keep the cadence
+# modest — drop one line below if you want a single daily pull.
+on:
+  schedule:
+    - cron: '0 20 * * *'
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  fetch-player-props:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd server/python_scripts
+          pip install -r requirements.txt
+
+      - name: Fetch player props (The Odds API)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          cd server/python_scripts
+          python fetch_player_props.py
