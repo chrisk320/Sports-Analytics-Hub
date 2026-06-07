@@ -1,11 +1,11 @@
 name: NBA Data Fetch
 
+# NOT scheduled: Basketball Reference returns HTTP 403 to GitHub's datacenter
+# IPs, so scraping from Actions fetches nothing. Game logs are refreshed by a
+# local cron on a residential IP (server/python_scripts/daily_fetch.sh).
+# Kept for manual runs / reference only.
 on:
-  schedule:
-    # Fetch yesterday's game stats - 11 AM UTC daily (3 AM PT)
-    # All games should be complete by this time
-    - cron: '0 11 * * *'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Manual trigger only (will 403 on BBRef from runner IPs)
 
 jobs:
   fetch-game-stats:
