@@ -4,6 +4,27 @@ A full-stack application for analyzing NBA player performance and sports-betting
 
 **Live Demo:** [sports-analytics-hub.vercel.app](https://sports-analytics-hub.vercel.app) · **API:** [Render backend](https://sports-analytics-hub-7hse.onrender.com)
 
+![Sports Analytics Hub — tonight's board](docs/screenshots/homePage.png)
+
+*Home — a live edge ticker, watchlist cards with trend sparklines, prop comparison, and the bet slip.*
+
+## Screens
+
+### Sportsbook Compare — best-line finder
+![Sportsbook Compare](docs/screenshots/compareBooksPage.png)
+
+Every book's price for each prop, with the highest-paying one flagged (★), savings per $100 vs. the market, and a **de-vigged consensus Edge%** that surfaces +EV plays.
+
+### Player Detail
+![Player Detail](docs/screenshots/playerDetailPage.png)
+
+A market-aware game-log chart with the prop line overlaid (toggle PTS / REB / AST / PR / PA / RA), a full stat strip, recent game logs, and tonight's props with live EV.
+
+### Game Detail
+![Game Detail](docs/screenshots/gameDetailPage.png)
+
+Team markets — spread, total, and moneyline with the best price per side highlighted — plus player props split by team across all six markets.
+
 ## Architecture
 
 ```
