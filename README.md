@@ -1,179 +1,181 @@
 # Sports Analytics Hub
 
-A full-stack application for analyzing NBA player performance and sports betting opportunities. Features a robust data pipeline, RESTful API, modern React frontend, and automated daily data updates via GitHub Actions.
+A full-stack application for analyzing NBA player performance and sports-betting value. It pairs a Basketball-Reference data pipeline with a React betting dashboard that shops player props and team lines across sportsbooks, surfaces line-shopping savings and de-vigged +EV edges, and shows market-aware player trends.
 
-**Live Demo:** [Vercel Frontend](https://sports-analytics-hub.vercel.app) | **API:** [Render Backend](https://sports-analytics-hub-7hse.onrender.com)
+**Live Demo:** [sports-analytics-hub.vercel.app](https://sports-analytics-hub.vercel.app) · **API:** [Render backend](https://sports-analytics-hub-7hse.onrender.com)
 
-## Project Architecture
+## Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   React SPA     │────▶│  Express API    │────▶│   PostgreSQL    │
-│   (Vercel)      │     │   (Render)      │     │   (Supabase)    │
+│   (Vercel)      │     │   (Render)      │     │     (Neon)      │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
-                               ▲
-                               │
-                    ┌──────────┴──────────┐
-                    │   GitHub Actions    │
-                    │  (Daily Data Sync)  │
-                    └─────────────────────┘
+                                                          ▲
+                                                          │ writes
+                                               ┌──────────┴──────────┐
+                                               │  Local cron (Mac)   │
+                                               │ Basketball Reference│
+                                               │    daily scrape     │
+                                               └─────────────────────┘
 ```
 
-### 1. Data Pipeline
+### 1. Data Pipeline (Python · Basketball Reference)
 
-- **Python Scripts:** Automated data fetchers using `nba_api` for player stats and game logs
-- **Node.js Scrapers:** Puppeteer scripts for scraping advanced stats from `stats.nba.com`
-- **GitHub Actions:** Scheduled workflows for daily data updates
-  - Morning job (5 AM PT): Fetches today's scheduled NBA games from The Odds API
-  - Night job (3 AM PT): Fetches game stats after games complete
+Player stats are scraped from [Basketball Reference](https://www.basketball-reference.com) box-score pages (the `nba_api` was dropped because its endpoints 403 from datacenter IPs; it's now only used for headshots).
 
-### 2. Database (PostgreSQL)
+| Script | Purpose |
+|--------|---------|
+| `fetch_bref_all_stats.py` | Combined basic + advanced box scores in one pass (full season, or `--yesterday`) |
+| `fetch_bref_rosters_and_logs.py` | Rosters + traditional game logs |
+| `fetch_bref_advanced_stats.py` | Advanced metrics (ORtg/DRtg, TS%, eFG%, USG%) — `--yesterday` or a season year |
+| `fetch_bref_backfill.py` | Backfill any date range: `--start YYYY-MM-DD [--end ...]` (idempotent; reuses the daily logic — used for playoffs) |
+| `fetch_headshots.py` | Player headshot URLs (`nba_api`) |
+| `fetch_player_props.py` | Player props from The Odds API → `player_props` table |
+| `daily_fetch.sh` | Local cron entrypoint → runs `fetch_bref_all_stats.py --yesterday` |
 
-Hosted on Supabase with tables for:
-- `players`: Player info and headshot URLs
-- `player_season_stats`: Season averages
-- `player_game_logs`: Game-by-game traditional stats
-- `advanced_box_scores`: Advanced metrics (usage %, ratings, TS%)
-- `user_favorites`: User-specific favorite players
-- `teams`: NBA team names and abbreviations
+**Why local cron, not GitHub Actions:** Basketball Reference returns `403 Forbidden` to GitHub's datacenter IPs, so a cloud scraper fetches nothing. The pipeline runs from a residential IP via `cron` on the dev machine:
 
-### 3. External APIs
+```cron
+0 6 * * * /Users/<you>/repos/nbastats/server/python_scripts/daily_fetch.sh >> /tmp/nba-fetch.log 2>&1
+```
 
-- **The Odds API:** Real-time NBA/NFL betting odds from multiple sportsbooks
-- **NBA API:** Official NBA stats via `nba_api` Python library
-- **Google OAuth:** User authentication
+> Note: `--yesterday` fetches a single day, so if the machine is asleep at run time that day is skipped — use `fetch_bref_backfill.py --start <date>` to fill gaps.
 
-### 4. Backend API (Express.js)
+### 2. Database (PostgreSQL on Neon)
 
-RESTful API hosted on Render:
+[Neon](https://neon.tech) serverless Postgres — auto-suspends when idle and auto-resumes on the next query (sub-second), so it never gets stuck paused. Standard Postgres via `pg` (Node) and `psycopg` (Python).
 
-#### Players
-- `GET /players` - List all players
-- `GET /players/:playerId` - Player info
-- `GET /players/:playerId/season-averages` - Season stats
-- `GET /players/:playerId/gamelogs` - Last 10 games
-- `GET /players/:playerId/full-gamelogs` - Games with advanced stats
-- `GET /players/:playerId/gamelogs/:opponent` - Filter by opponent
+| Table | Contents |
+|-------|----------|
+| `players` | Player master data + `headshot_url`, `team_abbreviation` |
+| `player_game_logs` | Game-by-game traditional stats (`pts`, `reb`, `ast`, `stl`, `blk`, `min`) |
+| `advanced_box_scores` | Per-game advanced metrics (1:1 with `player_game_logs`) |
+| `player_props` | Player prop lines/odds per book (populated by `fetch_player_props.py`) |
+| `user_favorites` | Per-user saved players |
+| `teams` | NBA team names + abbreviations |
 
-#### Teams
-- `GET /teams` - All NBA teams
+Season averages are **computed on the fly** from `player_game_logs` (the old `player_season_stats` table was dropped). Schema lives in `server/migrations/`.
 
-#### User Favorites
-- `GET /users/:userId/favorites` - User's favorites
-- `POST /users/:userId/favorites` - Add favorite
-- `DELETE /users/:userId/favorites/:playerId` - Remove favorite
+### 3. Backend API (Express.js · ES Modules)
 
-#### NBA Betting
-- `GET /nbabets/nbagames` - Upcoming NBA games
-- `GET /nbabets/nbateamlines/:gameId` - Team betting lines
-- `GET /nbabets/nbaplayerprops/:gameId` - Player prop bets
+#### Players (`/players`)
+- `GET /players` — list all players
+- `GET /players/:playerId` — player info
+- `GET /players/:playerId/season-averages` — season averages (computed from logs)
+- `GET /players/:playerId/gamelogs` — last 10 games
+- `GET /players/:playerId/full-gamelogs` — last 10 games + advanced stats
+- `GET /players/:playerId/gamelogs/:opponentAbbr` — filter by opponent
 
-#### NFL Betting
-- `GET /nflbets/nflgames` - Upcoming NFL games
-- `GET /nflbets/nflteamlines/:gameId` - Team betting lines
-- `GET /nflbets/nflplayerprops/:gameId` - Player prop bets
+#### Player Props (`/playerprops`)
+- `GET /playerprops/today` — every prop for the current slate (nearest game day on/after today, US Eastern)
+- `GET /playerprops/game/:gameId` — every prop for one game
+- `GET /playerprops/:playerId` — a player's props for their next game
+- `GET /playerprops/:playerId/game` — whether a player has an upcoming game
+- `POST /playerprops/refresh` — refetch props from The Odds API
 
-#### AI Chat
-- `POST /chat` - Natural language NBA stats queries
+#### NBA / NFL Betting (`/nbabets`, `/nflbets`)
+- `GET /{nba,nfl}games` — upcoming games (Odds API event list)
+- `GET /{nba,nfl}teamlines/:eventId` — moneyline / spread / total
+- `GET /{nba,nfl}playerprops/:eventId` — game player props
 
-### 5. Frontend (React)
+#### Teams · Favorites · Chat
+- `GET /teams`
+- `GET|POST /users/:userId/favorites`, `DELETE /users/:userId/favorites/:playerId`
+- `POST /chat` — natural-language NBA stats queries (OpenAI)
 
-Modern SPA hosted on Vercel with three main sections:
+### 4. Frontend (React + React Router)
 
-#### NBA Player Stats
-- Google OAuth authentication
-- Personalized dashboard with favorite players
-- Live player search with autocomplete
-- Stats modal with season averages, game logs, and charts
-- Filter game logs by opponent
+A multi-page betting dashboard (dark slate/purple theme). State lives in a shared `Layout` and is passed to pages via the router `Outlet` context; the bet slip is persisted to `localStorage`.
 
-#### NBA Team Bets
-- Upcoming NBA games display
-- Real-time betting lines (moneyline, spreads, totals)
-- Multi-sportsbook comparison (DraftKings, FanDuel, BetMGM, etc.)
+| Route | Page | What it shows |
+|-------|------|---------------|
+| `/` | **Home** | Live edge ticker, watchlist cards with sparklines + hit rates, market-depth panel, hot prop edges, bet slip |
+| `/games` | **Games** | Tonight's NBA slate |
+| `/games/:gameId` | **Game Detail** | Team markets (spread/total/ML, best price per side) + player props split by team across all 6 markets (PTS/REB/AST/PR/PA/RA) |
+| `/players/:playerId` | **Player Detail** | Hero + stat strip, market-aware game-log chart with the line overlaid, opponent filter, tonight's props |
+| `/compare` | **Sportsbook Compare** | Best-line finder: book-by-book ledger, best price highlighted, savings/$100 vs. median, and a de-vigged consensus **Edge%** (+EV) |
+| `/nfl` | **NFL** | NFL games + betting lines (modal) |
 
-#### NFL Team Bets
-- NFL games with betting lines
-- Player prop bets
+Shared betting math (American-odds ↔ implied prob/decimal, best price, de-vig, savings, EV%, parlay) lives in `frontend/src/lib/odds.js`. Auth is Google OAuth via `@react-oauth/google`.
 
 ## Technology Stack
 
 | Layer | Technologies |
 |-------|-------------|
-| **Frontend** | React 19, Vite, Tailwind CSS, Recharts, Axios |
-| **Backend** | Node.js, Express.js |
-| **Database** | PostgreSQL (Supabase) |
-| **Data Pipeline** | Python (nba_api), Puppeteer, GitHub Actions |
+| **Frontend** | React 19, Vite, Tailwind CSS 4, React Router 7, Recharts 3, Axios |
+| **Backend** | Node.js (ES Modules), Express.js |
+| **Database** | PostgreSQL — [Neon](https://neon.tech) serverless |
+| **Data Pipeline** | Python (Basketball Reference scraping), local `cron` |
 | **AI** | OpenAI GPT-3.5-turbo |
-| **Auth** | Google OAuth 2.0 |
-| **APIs** | The Odds API, NBA API |
-| **Hosting** | Vercel (frontend), Render (backend) |
+| **Auth** | Google OAuth 2.0 (`@react-oauth/google`) |
+| **External APIs** | The Odds API, Basketball Reference, `nba_api` (headshots) |
+| **Hosting** | Vercel (frontend), Render (backend), Neon (database) |
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- PostgreSQL database
+Node.js 18+ · Python 3.11+ · a PostgreSQL connection string (Neon)
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev        # Vite dev server (HMR)
 ```
 
 ### Backend
 ```bash
 cd server
 npm install
-npm run start
+npm run start      # Express on :5000 (nodemon)
 ```
 
-### Python Scripts
+### Data pipeline
 ```bash
 cd server/python_scripts
-python -m venv venv
-source venv/bin/activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# Fetch all player data (initial setup)
-python fetch_team_rosters_and_logs.py
-python fetch_all_players_advanced_box_scores.py
+# Initial load
+python fetch_bref_all_stats.py        # players + game logs + advanced
+python fetch_headshots.py             # headshots
 
-# Daily updates (automated via GitHub Actions)
-python fetch_todays_scheduled_games.py  # Morning
-python fetch_yesterdays_games.py        # Night
+# Daily update (runs via cron; see daily_fetch.sh)
+python fetch_bref_all_stats.py --yesterday
+
+# Fill a gap / backfill a range (e.g. the playoffs)
+python fetch_bref_backfill.py --start 2026-04-13 --end 2026-06-02
+
+# Props (needs ODDS_API_KEY)
+python fetch_player_props.py
 ```
 
 ## Environment Variables
 
-### Backend (.env)
+**Backend** — `server/.env` (gitignored):
 ```env
-DATABASE_URL=postgresql://user:password@host:5432/nba_stats
+DATABASE_URL=postgresql://user:password@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 OPENAI_API_KEY=sk-...
 ODDS_API_KEY=...
 PORT=5000
 ```
+The Python scripts read the same `server/.env` via `load_dotenv()`.
 
-### GitHub Secrets (for Actions)
-- `DATABASE_URL` - Supabase PostgreSQL connection string
-- `ODDS_API_KEY` - The Odds API key
+**Frontend** — `frontend/.env` (gitignored):
+```env
+VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+VITE_API_BASE_URL=http://localhost:5000   # optional; defaults to the Render backend
+```
+> Add your deployed origin to the Google OAuth client's **Authorized JavaScript origins**, or sign-in fails in production.
 
-## Automated Data Pipeline
-
-GitHub Actions runs two scheduled jobs daily:
-
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| `fetch-scheduled-games` | 5 AM PT (1 PM UTC) | Fetch today's NBA games from Odds API |
-| `fetch-game-stats` | 3 AM PT (11 AM UTC) | Fetch player stats after games complete |
-
-The morning job saves game data as an artifact, which the night job downloads to know which teams played.
+## Deployment
+- **Frontend → Vercel.** `frontend/vercel.json` adds an SPA rewrite so client routes (`/games/:id`, `/players/:id`, `/compare`) don't 404 on refresh.
+- **Backend → Render.** Set `DATABASE_URL`, `OPENAI_API_KEY`, `ODDS_API_KEY` in the service env.
+- **Database → Neon.** Use the pooled connection string.
 
 ## Future Enhancements
-
-- AI-powered betting predictions using historical data
-- Real-time game tracking and live odds updates
-- Enhanced player prop analysis
-- Mobile app version
+- Self-healing daily fetch (lookback window so a missed run catches up)
+- Historical line-movement tracking
+- Backtesting framework for prop/edge models
+- Mobile-friendly layout pass
