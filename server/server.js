@@ -8,6 +8,7 @@ import chat from './routes/chat.routes.js';
 import nbabets from './routes/nbabets.routes.js';
 import nflbets from './routes/nflbets.routes.js';
 import playerprops from './routes/playerprops.routes.js';
+import kalshi from './routes/kalshi.routes.js';
 dotenv.config()
 
 const app = express();
@@ -22,6 +23,7 @@ app.use('/chat', chat);
 app.use('/nbabets', nbabets);
 app.use('/nflbets', nflbets);
 app.use('/playerprops', playerprops);
+app.use('/kalshi', kalshi);
 
 app.listen(5000, () => {
     console.log("Server has started on port 5000")
