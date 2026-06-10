@@ -3,8 +3,10 @@ import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { Loader, ChevronLeft } from 'lucide-react';
 import { api } from '../lib/api';
 import { parseTeamLines, buildTeamMarkets } from '../lib/teamLines';
+import { matchKalshiEvent, buildKalshiMarket } from '../lib/kalshi';
 import TeamMarketCard from '../components/game/TeamMarketCard';
 import TeamPropsTable from '../components/game/TeamPropsTable';
+import KalshiMarketCard from '../components/game/KalshiMarketCard';
 
 export default function GameDetailPage() {
   const { gameId } = useParams();
@@ -13,18 +15,21 @@ export default function GameDetailPage() {
   const [loading, setLoading] = useState(true);
   const [parsed, setParsed] = useState(null);
   const [props, setProps] = useState([]);
+  const [kalshiData, setKalshiData] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const [linesRes, propsRes] = await Promise.all([
+      const [linesRes, propsRes, kalshiRes] = await Promise.all([
         api.get(`/nbabets/nbateamlines/${gameId}`).catch(() => ({ data: null })),
         api.get(`/playerprops/game/${gameId}`).catch(() => ({ data: [] })),
+        api.get('/kalshi/nbagames').catch(() => ({ data: null })),
       ]);
       if (cancelled) return;
       setParsed(parseTeamLines(linesRes.data));
       setProps(propsRes.data || []);
+      setKalshiData(kalshiRes.data);
       setLoading(false);
     })();
     return () => {
@@ -41,6 +46,12 @@ export default function GameDetailPage() {
   }, [parsed, gameFromList, props]);
 
   const markets = useMemo(() => buildTeamMarkets(parsed), [parsed]);
+
+  const kalshiMarket = useMemo(() => {
+    if (!meta || !kalshiData?.events?.length) return null;
+    const event = matchKalshiEvent(kalshiData.events, meta);
+    return event ? buildKalshiMarket(event, meta) : null;
+  }, [kalshiData, meta]);
 
   const { homePlayers, awayPlayers, homeAbbr, awayAbbr } = useMemo(() => {
     const byPlayer = new Map();
@@ -127,6 +138,16 @@ export default function GameDetailPage() {
           ))}
         </div>
       </div>
+
+      {/* Kalshi prediction markets (hidden when unavailable or unmatched) */}
+      {kalshiMarket && (
+        <div>
+          <h2 className="mb-3 text-lg font-bold text-slate-50">Prediction markets</h2>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <KalshiMarketCard market={kalshiMarket} />
+          </div>
+        </div>
+      )}
 
       {/* Player props split by team */}
       <div>
