@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Kalshi's market-data API is PUBLIC — no API key, no auth, no request signing
+// (unlike The Odds API which needs ODDS_API_KEY). Prices are integer cents
+// (0–100) which equal the implied probability percent.
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 const SERIES_TICKER = 'KXNBAGAME';
 const CACHE_TTL_MS = 60_000;
@@ -100,5 +103,58 @@ export const getKalshiNBAGames = async (req, res) => {
             return res.json(cache.data);
         }
         res.status(500).json({ error: 'Failed to fetch Kalshi NBA markets' });
+    }
+};
+
+// --- Futures markets (championship / MVP), used by the Futures page ---
+
+// Whitelist mapping a friendly :market param -> Kalshi series ticker + label, so
+// the client can't inject arbitrary series.
+const KALSHI_SERIES = {
+    'nba-champion': { series: 'KXNBA', label: 'NBA Champion' },
+    'nba-mvp': { series: 'KXNBAMVP', label: 'NBA MVP' },
+    'nfl-champion': { series: 'KXSB', label: 'Super Bowl Winner' },
+};
+
+// Kalshi returns integer-cent fields (yes_bid/yes_ask/last_price, 0–100) and
+// dollar variants (..._dollars, 0–1). Prefer cents; fall back to dollars*100.
+const cents = (intVal, dollarVal) => {
+    if (intVal != null) return intVal;
+    if (dollarVal != null) return Math.round(dollarVal * 100);
+    return null;
+};
+
+export const getKalshiMarket = async (req, res) => {
+    const { market } = req.params;
+    const entry = KALSHI_SERIES[market];
+    if (!entry) {
+        return res.status(400).json({ error: `Invalid market. Allowed: ${Object.keys(KALSHI_SERIES).join(', ')}` });
+    }
+    try {
+        const response = await axios.get(`${KALSHI_BASE}/markets`, {
+            params: {
+                series_ticker: entry.series,
+                status: 'open',
+                limit: 100,
+            },
+        });
+
+        const markets = (response.data?.markets || [])
+            .map((m) => ({
+                ticker: m.ticker,
+                outcome: m.yes_sub_title || m.title,
+                yesBid: cents(m.yes_bid, m.yes_bid_dollars),
+                yesAsk: cents(m.yes_ask, m.yes_ask_dollars),
+                last: cents(m.last_price, m.last_price_dollars),
+                volume: Number(m.volume ?? m.volume_fp ?? 0),
+            }))
+            // Sort by the highest standing bid (a real buyer's price), which stays
+            // meaningful even for thin markets where the ask is stale/inflated.
+            .sort((a, b) => (b.yesBid ?? -1) - (a.yesBid ?? -1) || (b.last ?? -1) - (a.last ?? -1));
+
+        res.json({ label: entry.label, markets });
+    } catch (error) {
+        console.error('Error fetching Kalshi market:', error?.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to fetch Kalshi market' });
     }
 };

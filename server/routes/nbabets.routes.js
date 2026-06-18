@@ -1,7 +1,9 @@
 import express from 'express';
-import { getNBATeamLines, getNBATeamLinesByEventId, getNBAEventIds, getNBAPlayerProps, getNBAPlayerPropsByEventId } from '../controllers/nbabets.controllers.js';
+import { getNBATeamLines, getNBATeamLinesByEventId, getNBAEventIds, getNBAPlayerProps, getNBAPlayerPropsByEventId, getNBAFutures } from '../controllers/nbabets.controllers.js';
 
 const router = express.Router();
+
+router.get('/futures/:market', getNBAFutures);
 
 router.get('/nbateamlines', getNBATeamLines);
 

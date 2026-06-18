@@ -32,6 +32,7 @@ SEASON_START_DATES = {
     2024: date(2023, 10, 24),  # 2023-24 season
     2025: date(2024, 10, 22),  # 2024-25 season
     2026: date(2025, 10, 21),  # 2025-26 season
+    2027: date(2026, 10, 20),  # 2026-27 season (estimated; confirm when schedule released)
 }
 
 # Season end dates (regular season ends mid-April)
@@ -39,6 +40,7 @@ SEASON_END_DATES = {
     2024: date(2024, 4, 14),   # 2023-24 regular season end
     2025: date(2025, 4, 13),   # 2024-25 regular season end
     2026: date(2026, 4, 12),   # 2025-26 regular season end (estimated)
+    2027: date(2027, 4, 12),   # 2026-27 regular season end (estimated; confirm)
 }
 
 TEST_MODE = False

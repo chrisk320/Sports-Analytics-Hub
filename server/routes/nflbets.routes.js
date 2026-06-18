@@ -1,7 +1,9 @@
 import express from 'express';
-import { getNFLTeamLines, getNFLPlayerProps, getNFLEventIds, getNFLTeamLinesByEventId, getNFLPlayerPropsByEventId } from '../controllers/nflbets.controllers.js';
+import { getNFLTeamLines, getNFLPlayerProps, getNFLEventIds, getNFLTeamLinesByEventId, getNFLPlayerPropsByEventId, getNFLFutures } from '../controllers/nflbets.controllers.js';
 
 const router = express.Router();
+
+router.get('/futures/:market', getNFLFutures);
 
 router.get('/nflteamlines', getNFLTeamLines);
 

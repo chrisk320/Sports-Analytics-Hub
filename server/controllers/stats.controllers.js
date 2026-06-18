@@ -117,6 +117,79 @@ export const getFullGameLogs = async (req, res) => {
     }
 }
 
+export const getSeasons = async (req, res) => {
+    console.log(`Received request for available seasons.`);
+    try {
+        const result = await pool.query('SELECT DISTINCT season FROM player_game_logs ORDER BY season DESC;');
+        res.status(200).json(result.rows.map((r) => r.season));
+    } catch (err) {
+        console.error('Error fetching seasons', err.stack);
+        res.status(500).send('Server Error');
+    }
+};
+
+// Whitelist of leaderboard stats -> SQL aggregate expression. Keys come from the
+// request, so we never interpolate raw column names from user input.
+const LEADERBOARD_STATS = {
+    pts: 'AVG(pgl.pts)',
+    reb: 'AVG(pgl.reb)',
+    ast: 'AVG(pgl.ast)',
+    stl: 'AVG(pgl.stl)',
+    blk: 'AVG(pgl.blk)',
+    ts: 'AVG(abs.true_shooting_percentage)',
+    usage: 'AVG(abs.usage_percentage)',
+};
+
+export const getLeaderboard = async (req, res) => {
+    const { season, stat = 'pts' } = req.query;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
+    const minGames = 20; // exclude small samples
+    const statExpr = LEADERBOARD_STATS[stat];
+    console.log(`Received leaderboard request: season=${season || 'latest'} stat=${stat}`);
+
+    if (!statExpr) {
+        return res.status(400).json({ error: `Invalid stat. Allowed: ${Object.keys(LEADERBOARD_STATS).join(', ')}` });
+    }
+
+    try {
+        const params = [];
+        let seasonFilter;
+        if (season) {
+            params.push(season);
+            seasonFilter = `pgl.season = $${params.length}`;
+        } else {
+            seasonFilter = `pgl.season = (SELECT MAX(season) FROM player_game_logs)`;
+        }
+        params.push(minGames);
+        const minGamesParam = `$${params.length}`;
+        params.push(limit);
+        const limitParam = `$${params.length}`;
+
+        const query = `
+            SELECT
+                pgl.player_id,
+                p.full_name,
+                p.headshot_url,
+                MAX(pgl.season)                          AS season,
+                COUNT(*)::int                            AS games_played,
+                ROUND(${statExpr}::numeric, 1)::float    AS value
+            FROM player_game_logs pgl
+            JOIN players p ON p.player_id = pgl.player_id
+            LEFT JOIN advanced_box_scores abs ON abs.game_log_id = pgl.game_log_id
+            WHERE ${seasonFilter}
+            GROUP BY pgl.player_id, p.full_name, p.headshot_url
+            HAVING COUNT(*) >= ${minGamesParam} AND ${statExpr} IS NOT NULL
+            ORDER BY value DESC NULLS LAST
+            LIMIT ${limitParam};
+        `;
+        const result = await pool.query(query, params);
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error fetching leaderboard', err.stack);
+        res.status(500).send('Server Error');
+    }
+};
+
 export const getGameLogsByOpponent = async (req, res) => {
     const { playerId, opponentAbbr } = req.params;
     console.log(`Received request for player ${playerId} vs ${opponentAbbr}`);

@@ -1,14 +1,16 @@
 import React from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import TeamCard from '../components/TeamCard';
+import OffseasonBanner from '../components/OffseasonBanner';
 
 export default function GamesPage() {
-  const { nbaGames } = useOutletContext();
+  const { nbaGames, seasonStatus } = useOutletContext();
   const navigate = useNavigate();
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <h2 className="text-3xl font-bold text-center">NBA Games</h2>
+      {!seasonStatus?.nbaInSeason && <OffseasonBanner sport="NBA" />}
       {nbaGames.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {nbaGames.map((game) => (

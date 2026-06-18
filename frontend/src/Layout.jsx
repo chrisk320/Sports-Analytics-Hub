@@ -189,6 +189,14 @@ export default function Layout() {
     };
   }, []);
 
+  // Season detection: with no upcoming games (offseason), the live-data pages
+  // are empty. Derived from the games already fetched — no extra API spend.
+  const seasonStatus = {
+    nbaInSeason: nbaGames.length > 0,
+    nflInSeason: nflGames.length > 0,
+  };
+  seasonStatus.isOffseason = !seasonStatus.nbaInSeason && !seasonStatus.nflInSeason;
+
   const context = {
     // data
     allPlayers,
@@ -196,6 +204,7 @@ export default function Layout() {
     selectedPlayers,
     nbaGames,
     nflGames,
+    seasonStatus,
     user,
     isLoading,
     // search

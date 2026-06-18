@@ -130,6 +130,36 @@ export const getNFLPlayerProps = async (req, res) => {
     }
 };
 
+// Offseason futures (outrights). Separate Odds API "sport" keys. Confirm/extend
+// against GET https://api.the-odds-api.com/v4/sports/?apiKey=... (lists futures).
+const NFL_FUTURES_SPORTS = {
+    superbowl: 'americanfootball_nfl_super_bowl_winner',
+};
+
+export const getNFLFutures = async (req, res) => {
+    const { market } = req.params;
+    const sportKey = NFL_FUTURES_SPORTS[market];
+    if (!sportKey) {
+        return res.status(400).json({ error: `Invalid futures market. Allowed: ${Object.keys(NFL_FUTURES_SPORTS).join(', ')}` });
+    }
+    try {
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`, {
+            params: {
+                apiKey: process.env.ODDS_API_KEY,
+                regions: 'us,us2',
+                markets: 'outrights',
+                bookmakers: 'draftkings,fanduel,betmgm,betus,espnbet',
+                oddsFormat: 'american',
+                dateFormat: 'iso',
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching NFL futures:', error?.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to fetch NFL futures' });
+    }
+};
+
 export const getNFLPlayerPropsByEventId = async (req, res) => {
     const { eventId } = req.params;
     try {

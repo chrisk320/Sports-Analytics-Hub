@@ -1,13 +1,15 @@
 import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import TeamCard from '../components/TeamCard';
+import OffseasonBanner from '../components/OffseasonBanner';
 
 export default function NFLPage() {
-  const { nflGames, handleSelectNFLGame } = useOutletContext();
+  const { nflGames, handleSelectNFLGame, seasonStatus } = useOutletContext();
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <h2 className="text-3xl font-bold text-center">NFL Games</h2>
+      {!seasonStatus?.nflInSeason && <OffseasonBanner sport="NFL" />}
       {nflGames.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {nflGames.map((game) => (

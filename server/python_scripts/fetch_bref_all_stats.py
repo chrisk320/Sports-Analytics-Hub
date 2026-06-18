@@ -32,12 +32,14 @@ SEASON_START_DATES = {
     2024: date(2023, 10, 24),
     2025: date(2024, 10, 22),
     2026: date(2025, 10, 21),
+    2027: date(2026, 10, 20),  # 2026-27 season (estimated; confirm when schedule released)
 }
 
 SEASON_END_DATES = {
     2024: date(2024, 4, 14),
     2025: date(2025, 4, 13),
     2026: date(2026, 4, 12),
+    2027: date(2027, 4, 12),  # 2026-27 season (estimated; confirm)
 }
 
 # Basketball Reference team abbreviations to standard NBA abbreviations

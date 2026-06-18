@@ -128,6 +128,38 @@ export const getNBAPlayerProps = async (req, res) => {
     }
 };
 
+// Offseason futures (outrights). These are SEPARATE Odds API "sport" keys, not
+// markets on the regular NBA odds endpoint. Confirm/extend keys against
+// GET https://api.the-odds-api.com/v4/sports/?apiKey=... (it lists active futures).
+const NBA_FUTURES_SPORTS = {
+    champion: 'basketball_nba_championship_winner',
+    mvp: 'basketball_nba_mvp',
+};
+
+export const getNBAFutures = async (req, res) => {
+    const { market } = req.params;
+    const sportKey = NBA_FUTURES_SPORTS[market];
+    if (!sportKey) {
+        return res.status(400).json({ error: `Invalid futures market. Allowed: ${Object.keys(NBA_FUTURES_SPORTS).join(', ')}` });
+    }
+    try {
+        const response = await axios.get(`https://api.the-odds-api.com/v4/sports/${sportKey}/odds/`, {
+            params: {
+                apiKey: process.env.ODDS_API_KEY,
+                regions: 'us,us2',
+                markets: 'outrights',
+                bookmakers: 'draftkings,fanduel,betmgm,betus,fanatics,espnbet',
+                oddsFormat: 'american',
+                dateFormat: 'iso',
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('Error fetching NBA futures:', error?.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to fetch NBA futures' });
+    }
+};
+
 export const getNBAPlayerPropsByEventId = async (req, res) => {
     const { eventId } = req.params;
     try {

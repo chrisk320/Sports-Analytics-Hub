@@ -80,8 +80,8 @@ const queryTemplates = {
         advanced: `SELECT pgl.*, p.full_name, abs.usage_percentage, abs.offensive_rating, abs.defensive_rating, abs.net_rating FROM player_game_logs pgl JOIN players p ON pgl.player_id = p.player_id LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id IN ($1, $2) ORDER BY pgl.game_date DESC LIMIT $3`
     },
     season_totals: {
-        basic: `SELECT pgl.player_id, p.full_name, COUNT(*) as games_played, AVG(pgl.pts) as avg_points, AVG(pgl.reb) as avg_rebounds, AVG(pgl.ast) as avg_assists, AVG(pgl.stl) as avg_steals, AVG(pgl.blk) as avg_blocks, AVG(pgl.min) as avg_minutes FROM player_game_logs pgl JOIN players p ON pgl.player_id = p.player_id WHERE pgl.player_id = $1 AND pgl.game_date >= $2 GROUP BY pgl.player_id, p.full_name`,
-        advanced: `SELECT pgl.player_id, p.full_name, COUNT(*) as games_played, AVG(pgl.pts) as avg_points, AVG(pgl.reb) as avg_rebounds, AVG(pgl.ast) as avg_assists, AVG(pgl.stl) as avg_steals, AVG(pgl.blk) as avg_blocks, AVG(pgl.min) as avg_minutes, AVG(abs.usage_percentage) as avg_usage, AVG(abs.offensive_rating) as avg_offensive_rating, AVG(abs.defensive_rating) as avg_defensive_rating, AVG(abs.net_rating) as avg_net_rating FROM player_game_logs pgl JOIN players p ON pgl.player_id = p.player_id LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id = $1 AND pgl.game_date >= $2 GROUP BY pgl.player_id, p.full_name`
+        basic: `SELECT pgl.player_id, p.full_name, COUNT(*) as games_played, AVG(pgl.pts) as avg_points, AVG(pgl.reb) as avg_rebounds, AVG(pgl.ast) as avg_assists, AVG(pgl.stl) as avg_steals, AVG(pgl.blk) as avg_blocks, AVG(pgl.min) as avg_minutes FROM player_game_logs pgl JOIN players p ON pgl.player_id = p.player_id WHERE pgl.player_id = $1 AND pgl.season = (SELECT MAX(season) FROM player_game_logs WHERE player_id = $1) GROUP BY pgl.player_id, p.full_name`,
+        advanced: `SELECT pgl.player_id, p.full_name, COUNT(*) as games_played, AVG(pgl.pts) as avg_points, AVG(pgl.reb) as avg_rebounds, AVG(pgl.ast) as avg_assists, AVG(pgl.stl) as avg_steals, AVG(pgl.blk) as avg_blocks, AVG(pgl.min) as avg_minutes, AVG(abs.usage_percentage) as avg_usage, AVG(abs.offensive_rating) as avg_offensive_rating, AVG(abs.defensive_rating) as avg_defensive_rating, AVG(abs.net_rating) as avg_net_rating FROM player_game_logs pgl JOIN players p ON pgl.player_id = p.player_id LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id WHERE pgl.player_id = $1 AND pgl.season = (SELECT MAX(season) FROM player_game_logs WHERE player_id = $1) GROUP BY pgl.player_id, p.full_name`
     },
     head_to_head: {
         basic: `SELECT pgl1.*, p1.full_name as player1_name, pgl2.pts as player2_pts, pgl2.reb as player2_reb, pgl2.ast as player2_ast, p2.full_name as player2_name FROM player_game_logs pgl1 JOIN players p1 ON pgl1.player_id = p1.player_id JOIN player_game_logs pgl2 ON pgl1.game_date = pgl2.game_date AND pgl1.opponent = pgl2.opponent JOIN players p2 ON pgl2.player_id = p2.player_id WHERE pgl1.player_id = $1 AND pgl2.player_id = $2 ORDER BY pgl1.game_date DESC LIMIT $3`,
@@ -97,12 +97,6 @@ const executeQueryByTemplate = async (queryType, includeAdvanced, params) => {
 
     const query = includeAdvanced ? template.advanced : template.basic;
     return await executeQuery(query, params);
-};
-
-const getSeasonStartDate = () => {
-    const now = new Date();
-    const year = now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1;
-    return `${year}-10-01`; // NBA season typically starts in October
 };
 
 export const chatWithAI = async (req, res) => {
@@ -320,11 +314,13 @@ export const chatWithAI = async (req, res) => {
         }
 
         if (analysis.query_type === 'season_totals' && analysis.player_name) {
-            const seasonStart = getSeasonStartDate();
+            // Scope to the player's most recent season present in the data, so this
+            // works year-round (the offseason has no games after a calendar-derived
+            // season start, which previously produced a spurious "no data" 404).
             data = await executeQueryByTemplate(
                 'season_totals',
                 analysis.requested_advanced_stats,
-                [player.player_id, seasonStart]
+                [player.player_id]
             );
 
             queryDescription = `${player.full_name}'s season totals and averages`;

@@ -83,7 +83,7 @@ def fetch_nba_events(api_key):
     response = requests.get(url, params=params)
     response.raise_for_status()
 
-    return response.data if hasattr(response, 'data') else response.json()
+    return response.json()
 
 
 def fetch_props_for_event(api_key, event_id):
@@ -170,6 +170,12 @@ def main():
         print("Fetching NBA events...")
         events = fetch_nba_events(api_key)
         print(f"Found {len(events)} NBA games")
+
+        # Offseason: no upcoming games. Stale rows are already cleared above, so
+        # exit cleanly without making any per-event odds calls (saves API credits).
+        if not events:
+            print("No upcoming games — offseason no-op. Done.")
+            return
 
         total_props = 0
 

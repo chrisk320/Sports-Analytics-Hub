@@ -7,6 +7,8 @@ import NFLPage from './pages/NFLPage';
 import PlayerDetailPage from './pages/PlayerDetailPage';
 import GameDetailPage from './pages/GameDetailPage';
 import ComparePage from './pages/ComparePage';
+import ExplorePage from './pages/ExplorePage';
+import FuturesPage from './pages/FuturesPage';
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
           <Route path="players/:playerId" element={<PlayerDetailPage />} />
           <Route path="nfl" element={<NFLPage />} />
           <Route path="compare" element={<ComparePage />} />
+          <Route path="explore" element={<ExplorePage />} />
+          <Route path="futures" element={<FuturesPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

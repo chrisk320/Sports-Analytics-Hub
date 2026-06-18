@@ -1,9 +1,14 @@
 import express from 'express';
-import { getGameLogs, getPlayers, getSeasonAverages, getPlayer, getFullGameLogs, getGameLogsByOpponent } from '../controllers/stats.controllers.js';
+import { getGameLogs, getPlayers, getSeasonAverages, getPlayer, getFullGameLogs, getGameLogsByOpponent, getSeasons, getLeaderboard } from '../controllers/stats.controllers.js';
 
 const router = express.Router();
 
 router.get('/', getPlayers);
+
+// Static routes must precede '/:playerId' so they aren't swallowed by the param.
+router.get('/seasons', getSeasons);
+
+router.get('/leaderboard', getLeaderboard);
 
 router.get('/:playerId', getPlayer)
 

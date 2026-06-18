@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { formatOdds, bookLabel, MARKET_ORDER, DEFAULT_BOOKS } from '../lib/odds';
 import { buildCompareRows, sortRows, bestBookToday, avgSavings, evCount } from '../lib/compare';
 import MarketToggle from '../components/home/MarketToggle';
+import OffseasonBanner from '../components/OffseasonBanner';
 
 const POLL_MS = 60000;
 
@@ -115,7 +116,7 @@ function CompareRow({ row, books, onAdd, inSlip }) {
 }
 
 export default function ComparePage() {
-  const { selectedBooks, setSelectedBooks, addToSlip, isInSlip } = useOutletContext();
+  const { selectedBooks, setSelectedBooks, addToSlip, isInSlip, seasonStatus } = useOutletContext();
 
   const [props, setProps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -186,6 +187,8 @@ export default function ComparePage() {
 
   return (
     <div className="mx-auto max-w-[1536px] space-y-6">
+      {!seasonStatus?.nbaInSeason && <OffseasonBanner sport="NBA" />}
+
       {/* Title */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
