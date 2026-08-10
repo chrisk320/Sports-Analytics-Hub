@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'; // To make API requests
-import { getMovingAverage } from './script_functions/prediction_logic.js';
+import { getMovingAverage } from './lib/stats.js';
 
 // --- Configuration ---
 const PLAYER_ID_TO_TEST = 201939; // Stephen Curry

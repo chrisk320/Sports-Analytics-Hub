@@ -2,6 +2,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getOrFetch } from '../lib/cache.js';
 
 // Kalshi's market-data API is PUBLIC — no API key, no auth, no request signing
 // (unlike The Odds API which needs ODDS_API_KEY). Prices are integer cents
@@ -13,8 +14,6 @@ const MAX_PAGES = 10;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE_PATH = path.join(__dirname, '..', 'data', 'kalshi-sample.json');
-
-let cache = { data: null, expiresAt: 0 };
 
 const MONTHS = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
 
@@ -83,25 +82,20 @@ async function fetchAllNbaGameEvents() {
 }
 
 export const getKalshiNBAGames = async (req, res) => {
-    if (cache.data && Date.now() < cache.expiresAt) {
-        return res.json(cache.data);
-    }
     try {
-        const rawEvents = process.env.KALSHI_SAMPLE === 'true'
-            ? JSON.parse(fs.readFileSync(SAMPLE_PATH, 'utf8')).events
-            : await fetchAllNbaGameEvents();
+        const { data } = await getOrFetch('kalshi:nbagames', CACHE_TTL_MS, async () => {
+            const rawEvents = process.env.KALSHI_SAMPLE === 'true'
+                ? JSON.parse(fs.readFileSync(SAMPLE_PATH, 'utf8')).events
+                : await fetchAllNbaGameEvents();
 
-        const data = {
-            fetchedAt: new Date().toISOString(),
-            events: rawEvents.map(normalizeEvent)
-        };
-        cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+            return {
+                fetchedAt: new Date().toISOString(),
+                events: rawEvents.map(normalizeEvent)
+            };
+        });
         res.json(data);
     } catch (error) {
         console.error('Error fetching Kalshi NBA markets:', error);
-        if (cache.data) {
-            return res.json(cache.data);
-        }
         res.status(500).json({ error: 'Failed to fetch Kalshi NBA markets' });
     }
 };
@@ -131,28 +125,32 @@ export const getKalshiMarket = async (req, res) => {
         return res.status(400).json({ error: `Invalid market. Allowed: ${Object.keys(KALSHI_SERIES).join(', ')}` });
     }
     try {
-        const response = await axios.get(`${KALSHI_BASE}/markets`, {
-            params: {
-                series_ticker: entry.series,
-                status: 'open',
-                limit: 100,
-            },
+        const { data } = await getOrFetch(`kalshi:market:${market}`, CACHE_TTL_MS, async () => {
+            const response = await axios.get(`${KALSHI_BASE}/markets`, {
+                params: {
+                    series_ticker: entry.series,
+                    status: 'open',
+                    limit: 100,
+                },
+            });
+
+            const markets = (response.data?.markets || [])
+                .map((m) => ({
+                    ticker: m.ticker,
+                    outcome: m.yes_sub_title || m.title,
+                    yesBid: cents(m.yes_bid, m.yes_bid_dollars),
+                    yesAsk: cents(m.yes_ask, m.yes_ask_dollars),
+                    last: cents(m.last_price, m.last_price_dollars),
+                    volume: Number(m.volume ?? m.volume_fp ?? 0),
+                }))
+                // Sort by the highest standing bid (a real buyer's price), which stays
+                // meaningful even for thin markets where the ask is stale/inflated.
+                .sort((a, b) => (b.yesBid ?? -1) - (a.yesBid ?? -1) || (b.last ?? -1) - (a.last ?? -1));
+
+            return { label: entry.label, markets };
         });
 
-        const markets = (response.data?.markets || [])
-            .map((m) => ({
-                ticker: m.ticker,
-                outcome: m.yes_sub_title || m.title,
-                yesBid: cents(m.yes_bid, m.yes_bid_dollars),
-                yesAsk: cents(m.yes_ask, m.yes_ask_dollars),
-                last: cents(m.last_price, m.last_price_dollars),
-                volume: Number(m.volume ?? m.volume_fp ?? 0),
-            }))
-            // Sort by the highest standing bid (a real buyer's price), which stays
-            // meaningful even for thin markets where the ask is stale/inflated.
-            .sort((a, b) => (b.yesBid ?? -1) - (a.yesBid ?? -1) || (b.last ?? -1) - (a.last ?? -1));
-
-        res.json({ label: entry.label, markets });
+        res.json(data);
     } catch (error) {
         console.error('Error fetching Kalshi market:', error?.response?.data || error.message);
         res.status(500).json({ error: 'Failed to fetch Kalshi market' });

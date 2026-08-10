@@ -66,13 +66,9 @@ Sports-Analytics-Hub/
 │   │   ├── chat.routes.js          # /chat
 │   │   ├── nflbets.routes.js       # /nflbets
 │   │   └── nbabets.routes.js       # /nbabets
-│   ├── script_functions/       # Puppeteer scrapers
-│   │   ├── season_script_db.js
-│   │   ├── advanced_stats_script.js
-│   │   ├── team_roster_scraper.js
-│   │   ├── headshot_script.js
-│   │   ├── teams_script.js
-│   │   └── top_players_by_*.js
+│   ├── lib/                    # Shared server utilities
+│   │   ├── cache.js            # TTL cache + stale-on-error (wraps all Odds API calls)
+│   │   └── stats.js            # getMovingAverage (used by backtest.js)
 │   ├── python_scripts/         # NBA API data fetchers
 │   │   ├── fetch_team_rosters_and_logs.py
 │   │   ├── fetch_all_players_advanced_box_scores.py
@@ -197,11 +193,10 @@ VITE_API_BASE_URL=https://sports-analytics-hub-7hse.onrender.com
 3. Add any state variables to App.jsx
 
 ### Running data scrapers
-```bash
-cd server
-node script_functions/season_script_db.js
-node script_functions/advanced_stats_script.js
-```
+
+The legacy Puppeteer scrapers in `server/script_functions/` were deleted — they
+were superseded by the Python pipeline below and carried hardcoded local DB
+config. Use the Python fetchers for all data loading.
 
 ### Running Python data fetchers
 ```bash
