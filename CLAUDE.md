@@ -18,7 +18,8 @@ npm run lint       # ESLint check
 npm run preview    # Preview production build
 
 # Backend (from /server)
-npm run start      # Start with nodemon (auto-restart)
+npm run dev        # Start with nodemon (auto-restart) — alias of `start`
+npm run start      # Same thing; kept for existing muscle memory / deploy config
 
 # Python scripts (from /server/python_scripts)
 source venv/bin/activate
