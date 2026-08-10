@@ -11,6 +11,10 @@ __pycache__/
 # Environment variables
 # Never commit your database passwords or API keys!
 .env
+# ...and any variant (.env.local, .env.migrationtest, .env.production, etc).
+# A bare `.env` pattern does NOT cover these.
+.env.*
+!.env.example
 
 # Logs
 npm-debug.log*
