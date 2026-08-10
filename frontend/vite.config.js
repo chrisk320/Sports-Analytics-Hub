@@ -14,4 +14,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  test: {
+    // The suite deliberately covers only the pure logic in src/lib — the betting
+    // math is the product, and a wrong de-vig or EV number is a silent,
+    // confidently-wrong answer rather than a crash. No jsdom needed.
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
 })
