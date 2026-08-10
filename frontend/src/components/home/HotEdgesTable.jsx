@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MARKETS, formatOdds, bookLabel } from '../../lib/odds';
+import { Panel } from '../ui/panel';
 
 // Full-width flat table of the slate's best price edges (price-based; no
 // per-player game-log fetch). Clicking a row pins that player's depth panel.
@@ -8,12 +9,14 @@ export default function HotEdgesTable({ edges = [], onPin, limit = 15 }) {
   const rows = edges.filter((e) => e.savings > 0).slice(0, limit);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="border-b border-slate-800 p-4">
-        <h3 className="font-bold text-slate-50">Hot prop edges</h3>
-        <p className="text-xs text-slate-500">Best available over price vs the median book, per market.</p>
-      </div>
-
+    <Panel
+      header={
+        <div>
+          <h3 className="font-bold text-slate-50">Hot prop edges</h3>
+          <p className="text-xs text-slate-500">Best available over price vs the median book, per market.</p>
+        </div>
+      }
+    >
       {rows.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -39,7 +42,7 @@ export default function HotEdgesTable({ edges = [], onPin, limit = 15 }) {
                       <Link
                         to={`/players/${e.playerId}`}
                         onClick={(ev) => ev.stopPropagation()}
-                        className="hover:text-purple-300"
+                        className="hover:text-cyan-300"
                       >
                         {e.playerName}
                       </Link>
@@ -66,6 +69,6 @@ export default function HotEdgesTable({ edges = [], onPin, limit = 15 }) {
           No price edges available. Try refreshing tonight's props on the backend.
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

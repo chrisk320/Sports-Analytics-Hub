@@ -40,6 +40,7 @@ export default function Layout() {
   const [activeNFLGame, setActiveNFLGame] = useState(null);
   const [activeNFLGameLines, setActiveNFLGameLines] = useState({ teamLines: [], playerProps: [] });
   const [nbaGames, setNbaGames] = useState([]);
+  const [authPrompt, setAuthPrompt] = useState(false);
 
   // Betting / watchlist UI state (shared with pages via Outlet context)
   const [pinnedPlayerId, setPinnedPlayerId] = useState(null);
@@ -131,7 +132,8 @@ export default function Layout() {
 
   const handleAddPlayer = async (player) => {
     if (!user) {
-      alert('Please sign in to add players.');
+      setAuthPrompt(true);
+      setTimeout(() => setAuthPrompt(false), 4000);
       return;
     }
     if (!selectedPlayers.find((p) => p.player_id === player.player_id)) {
@@ -233,7 +235,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen w-full bg-slate-950 font-sans text-slate-50 flex flex-col">
-      <Header isLoading={isLoading} user={user} setToken={setToken} />
+      <Header isLoading={isLoading} user={user} setToken={setToken} authPrompt={authPrompt} />
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <Outlet context={context} />
@@ -241,7 +243,7 @@ export default function Layout() {
         {/* AI assistant FAB */}
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 bg-purple-600 hover:bg-purple-500 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
+          className="fixed bottom-6 right-6 bg-purple-500 hover:bg-purple-400 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
           title="Ask AI about NBA stats"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

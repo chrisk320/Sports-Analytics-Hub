@@ -18,7 +18,8 @@ export default function WatchlistGrid({
     return (
       <div className="rounded-xl border-2 border-dashed border-slate-700 py-12 px-4 text-center text-slate-500">
         <p className="text-lg text-slate-300">Your watchlist is empty.</p>
-        <p>Search above to add players and track tonight's lines.</p>
+        <p>Search for a player above to track their prop lines, hit rate, and best current price across books.</p>
+        <p className="mt-1 text-xs text-slate-600">Sign in to save your watchlist between visits.</p>
       </div>
     );
   }

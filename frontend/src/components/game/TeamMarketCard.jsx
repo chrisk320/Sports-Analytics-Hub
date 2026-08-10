@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatOdds, bookLabel } from '../../lib/odds';
+import { Panel } from '../ui/panel';
 
 function Cell({ cell, best }) {
   return (
@@ -16,10 +17,7 @@ function Cell({ cell, best }) {
 export default function TeamMarketCard({ market }) {
   const { title, colA, colB, rows, bestA, bestB } = market;
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="border-b border-slate-800 px-4 py-3">
-        <h3 className="font-bold text-slate-50">{title}</h3>
-      </div>
+    <Panel header={<h3 className="font-bold text-slate-50">{title}</h3>}>
       {rows.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -44,6 +42,6 @@ export default function TeamMarketCard({ market }) {
       ) : (
         <p className="p-4 text-center text-sm text-slate-500">No lines available.</p>
       )}
-    </div>
+    </Panel>
   );
 }

@@ -3,6 +3,7 @@ import { useOutletContext, Link } from 'react-router-dom';
 import { Loader, Trophy } from 'lucide-react';
 import { api } from '../lib/api';
 import SearchBar from '../components/SearchBar';
+import { Panel } from '../components/ui/panel';
 
 // Leaderboard stats — keys must match the backend whitelist (LEADERBOARD_STATS).
 const STATS = [
@@ -22,8 +23,8 @@ const RECAP_CATEGORIES = [
 ];
 
 const segCls = (on) =>
-  `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-    on ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-50'
+  `rounded-md px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition ${
+    on ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
   }`;
 
 function StatCol({ label, a, b }) {
@@ -137,7 +138,7 @@ export default function ExplorePage() {
       </div>
 
       {/* Season recap */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <Panel tone="primary">
         <div className="mb-4 flex items-center gap-2">
           <Trophy className="h-5 w-5 text-amber-400" />
           <h2 className="text-lg font-semibold">{season ? `${season} leaders` : 'Season leaders'}</h2>
@@ -149,7 +150,7 @@ export default function ExplorePage() {
               <div key={c.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <div className="text-xs uppercase tracking-wide text-slate-500">{c.label}</div>
                 {r ? (
-                  <Link to={`/players/${r.player_id}`} className="mt-2 flex items-center gap-3 hover:text-purple-300">
+                  <Link to={`/players/${r.player_id}`} className="mt-2 flex items-center gap-3 hover:text-cyan-300">
                     {r.headshot_url && <img src={r.headshot_url} alt="" className="h-10 w-10 rounded-full bg-slate-800 object-cover" />}
                     <div>
                       <div className="font-semibold text-slate-100">{r.full_name}</div>
@@ -163,7 +164,7 @@ export default function ExplorePage() {
             );
           })}
         </div>
-      </div>
+      </Panel>
 
       {/* Leaderboard */}
       <div className="space-y-4">
@@ -194,7 +195,7 @@ export default function ExplorePage() {
             <Loader className="h-10 w-10 animate-spin text-purple-500" />
           </div>
         ) : rows.length > 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900">
+          <Panel padded={false}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -210,7 +211,7 @@ export default function ExplorePage() {
                     <tr key={r.player_id} className="border-t border-slate-800/70 hover:bg-slate-800/30">
                       <td className="px-4 py-2.5 font-mono text-slate-500">{i + 1}</td>
                       <td className="px-2 py-2.5">
-                        <Link to={`/players/${r.player_id}`} className="flex items-center gap-3 font-medium text-slate-100 hover:text-purple-300">
+                        <Link to={`/players/${r.player_id}`} className="flex items-center gap-3 font-medium text-slate-100 hover:text-cyan-300">
                           {r.headshot_url && <img src={r.headshot_url} alt="" className="h-8 w-8 rounded-full bg-slate-800 object-cover" />}
                           {r.full_name}
                         </Link>
@@ -222,7 +223,7 @@ export default function ExplorePage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
         ) : (
           <div className="rounded-xl border-2 border-dashed border-slate-700 py-16 text-center text-slate-400">
             No data for this season.
@@ -238,12 +239,12 @@ export default function ExplorePage() {
         </div>
 
         {compare.length > 0 && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <Panel tone="primary">
             <div className="grid grid-cols-3 items-center pb-3 text-center">
               {[a, b].map((c, idx) =>
                 c ? (
                   <div key={c.player.player_id} className={idx === 1 ? 'order-3' : 'order-1'}>
-                    <Link to={`/players/${c.player.player_id}`} className="flex flex-col items-center gap-2 hover:text-purple-300">
+                    <Link to={`/players/${c.player.player_id}`} className="flex flex-col items-center gap-2 hover:text-cyan-300">
                       {c.player.headshot_url && <img src={c.player.headshot_url} alt="" className="h-14 w-14 rounded-full bg-slate-800 object-cover" />}
                       <span className="font-semibold text-slate-100">{c.player.full_name}</span>
                       <span className="text-xs text-slate-500">{c.avgs?.season || ''}</span>
@@ -265,7 +266,7 @@ export default function ExplorePage() {
             <StatCol label="APG" a={a?.avgs?.assists_avg} b={b?.avgs?.assists_avg} />
             <StatCol label="TS%" a={a?.avgs?.ts_pct} b={b?.avgs?.ts_pct} />
             <StatCol label="USG%" a={a?.avgs?.usg_pct} b={b?.avgs?.usg_pct} />
-          </div>
+          </Panel>
         )}
       </div>
     </div>

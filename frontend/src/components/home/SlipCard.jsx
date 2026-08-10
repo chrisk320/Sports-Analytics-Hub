@@ -1,5 +1,6 @@
 import React from 'react';
 import { parlayOdds, americanToDecimal, formatOdds, bookLabel, MARKETS } from '../../lib/odds';
+import { Panel } from '../ui/panel';
 
 const STAKE = 10;
 
@@ -9,18 +10,20 @@ export default function SlipCard({ slip = [], onRemove, onClear }) {
   const payout = dec ? (STAKE * dec).toFixed(2) : null;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-800 p-4">
-        <h3 className="font-bold text-slate-50">
-          My slip <span className="text-slate-500">({slip.length})</span>
-        </h3>
-        {slip.length > 0 && (
-          <button onClick={onClear} className="text-xs text-slate-500 hover:text-rose-400">
-            clear
-          </button>
-        )}
-      </div>
-
+    <Panel
+      header={
+        <>
+          <h3 className="font-bold text-slate-50">
+            My slip <span className="text-slate-500">({slip.length})</span>
+          </h3>
+          {slip.length > 0 && (
+            <button onClick={onClear} className="text-xs text-slate-500 hover:text-rose-400">
+              clear
+            </button>
+          )}
+        </>
+      }
+    >
       {slip.length === 0 ? (
         <div className="p-6 text-center text-sm text-slate-500">
           Add picks from your watchlist or the depth panel.
@@ -63,6 +66,6 @@ export default function SlipCard({ slip = [], onRemove, onClear }) {
           </div>
         </>
       )}
-    </div>
+    </Panel>
   );
 }

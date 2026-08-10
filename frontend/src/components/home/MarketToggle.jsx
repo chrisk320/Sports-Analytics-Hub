@@ -12,9 +12,9 @@ export default function MarketToggle({ value, onChange, options = MARKET_ORDER }
           <button
             key={id}
             onClick={() => onChange(id)}
-            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition ${
+            className={`px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide rounded-md transition ${
               active
-                ? 'bg-purple-600 text-white'
+                ? 'bg-purple-500 text-white'
                 : 'text-slate-400 hover:text-slate-50 hover:bg-slate-800'
             }`}
           >

@@ -1,5 +1,6 @@
 import React from 'react';
 import { MARKETS, formatOdds, bookLabel } from '../../lib/odds';
+import { Panel } from '../ui/panel';
 
 const TAG_STYLES = {
   BEST: 'bg-amber-400/10 text-amber-300 border-amber-400/40',
@@ -45,11 +46,14 @@ export default function AlertsFeed({ edges = [], gameCount = 0, lastUpdated }) {
   ];
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-800 p-4">
-        <h3 className="font-bold text-slate-50">Alerts</h3>
-        {stamp && <span className="text-xs text-slate-600">{stamp}</span>}
-      </div>
+    <Panel
+      header={
+        <>
+          <h3 className="font-bold text-slate-50">Alerts</h3>
+          {stamp && <span className="text-xs text-slate-600">{stamp}</span>}
+        </>
+      }
+    >
       <ul className="max-h-[420px] divide-y divide-slate-800/70 overflow-y-auto">
         {items.map((it) => (
           <li key={it.id} className="flex items-start gap-2 px-4 py-2.5 text-sm text-slate-300">
@@ -61,6 +65,6 @@ export default function AlertsFeed({ edges = [], gameCount = 0, lastUpdated }) {
           <li className="px-4 py-6 text-center text-sm text-slate-500">No price edges right now.</li>
         )}
       </ul>
-    </div>
+    </Panel>
   );
 }

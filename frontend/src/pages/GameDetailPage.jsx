@@ -84,7 +84,7 @@ export default function GameDetailPage() {
     return (
       <div className="mx-auto max-w-3xl py-20 text-center text-slate-400">
         <p>Game not found, or no lines posted.</p>
-        <Link to="/games" className="mt-4 inline-block text-purple-400 hover:text-purple-300">
+        <Link to="/games" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
           ← Back to games
         </Link>
       </div>

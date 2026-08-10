@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { User } from 'lucide-react';
 import MiniSparkline from './MiniSparkline';
+import { Term } from '../ui/term';
 import {
   summarizeMarket,
   statFromLog,
@@ -56,7 +57,7 @@ export default function WatchlistCard({
       )}
 
       <div className="flex items-center gap-3">
-        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-purple-500 bg-slate-800 flex items-center justify-center">
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-cyan-400 bg-slate-800 flex items-center justify-center">
           {player.headshot_url ? (
             <img src={player.headshot_url} alt={player.full_name} className="h-full w-full object-cover" onError={fallbackImg} />
           ) : (
@@ -67,7 +68,7 @@ export default function WatchlistCard({
           <Link
             to={`/players/${player.player_id}`}
             onClick={(e) => e.stopPropagation()}
-            className="block truncate font-bold text-slate-50 hover:text-purple-300"
+            className="block truncate font-bold text-slate-50 hover:text-cyan-300"
           >
             {player.full_name}
           </Link>
@@ -101,7 +102,9 @@ export default function WatchlistCard({
               </div>
             </div>
             <div className="rounded-lg bg-slate-800/60 py-1.5">
-              <div className="text-[10px] uppercase text-slate-500">L10</div>
+              <div className="text-[10px] uppercase text-slate-500">
+                <Term define="l10">L10</Term>
+              </div>
               <div className="font-mono tabular-nums font-semibold text-slate-50">
                 {overCount != null ? `${overCount}/${last10.length}` : '—'}
               </div>
@@ -117,7 +120,8 @@ export default function WatchlistCard({
               avg <span className="font-mono tabular-nums text-slate-200">{avg != null ? avg.toFixed(1) : '—'}</span>
             </span>
             <span className={ev != null && ev >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-              EV <span className="font-mono tabular-nums">{ev != null ? `${ev >= 0 ? '+' : ''}${ev.toFixed(1)}%` : '—'}</span>
+              <Term define="ev">EV</Term>{' '}
+              <span className="font-mono tabular-nums">{ev != null ? `${ev >= 0 ? '+' : ''}${ev.toFixed(1)}%` : '—'}</span>
             </span>
           </div>
 
@@ -135,7 +139,7 @@ export default function WatchlistCard({
                   price: best.over_odds,
                 });
               }}
-              className="mt-3 w-full rounded-lg bg-purple-600 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-500"
+              className="mt-3 w-full rounded-lg bg-purple-500 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-400"
             >
               ＋ add over {line} ({bookLabel(best.bookmaker)})
             </button>

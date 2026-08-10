@@ -6,19 +6,21 @@ import { formatOdds, bookLabel, MARKET_ORDER, DEFAULT_BOOKS } from '../lib/odds'
 import { buildCompareRows, sortRows, bestBookToday, avgSavings, evCount } from '../lib/compare';
 import MarketToggle from '../components/home/MarketToggle';
 import OffseasonBanner from '../components/OffseasonBanner';
+import { Panel } from '../components/ui/panel';
+import { Term } from '../components/ui/term';
 
 const POLL_MS = 60000;
 
 const chipCls = (on) =>
-  `rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+  `rounded-lg border px-3 py-1.5 text-xs font-mono font-medium uppercase tracking-wide transition ${
     on
-      ? 'border-purple-500 bg-purple-600/20 text-purple-200'
+      ? 'border-purple-500 bg-purple-500/20 text-purple-200'
       : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-100'
   }`;
 
 const segCls = (on) =>
-  `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-    on ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-50'
+  `rounded-md px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition ${
+    on ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
   }`;
 
 function Stat({ label, value, accent = 'text-slate-50' }) {
@@ -48,7 +50,7 @@ function CompareRow({ row, books, onAdd, inSlip }) {
     <tr className="border-t border-slate-800/70 hover:bg-slate-800/30">
       <td className="whitespace-nowrap px-4 py-2.5 font-medium text-slate-100">
         {row.playerId ? (
-          <Link to={`/players/${row.playerId}`} className="hover:text-purple-300">
+          <Link to={`/players/${row.playerId}`} className="hover:text-cyan-300">
             {row.playerName}
           </Link>
         ) : (
@@ -104,7 +106,7 @@ function CompareRow({ row, books, onAdd, inSlip }) {
             onClick={() => onAdd(slipPick)}
             disabled={added}
             className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-              added ? 'cursor-default bg-slate-800 text-slate-500' : 'bg-purple-600 text-white hover:bg-purple-500'
+              added ? 'cursor-default bg-slate-800 text-slate-500' : 'bg-purple-500 text-white hover:bg-purple-400'
             }`}
           >
             {added ? 'added' : '＋ slip'}
@@ -206,12 +208,12 @@ export default function ComparePage() {
       </div>
 
       {/* Summary strip */}
-      <div className="grid grid-cols-2 gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-4">
+      <Panel tone="primary" className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Markets compared" value={summary.markets} />
         <Stat label="Avg savings / $100" value={`$${summary.avg.toFixed(2)}`} accent="text-emerald-400" />
         <Stat label="Best book today" value={summary.best ? bookLabel(summary.best.book) : '—'} />
         <Stat label="+EV markets" value={summary.ev} accent="text-emerald-400" />
-      </div>
+      </Panel>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -257,7 +259,7 @@ export default function ComparePage() {
         </div>
       ) : filtered.length > 0 ? (
         <>
-          <div className="rounded-xl border border-slate-800 bg-slate-900">
+          <Panel padded={false}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -270,8 +272,8 @@ export default function ComparePage() {
                         {bookLabel(b)}
                       </th>
                     ))}
-                    <th className="px-3 py-3 text-right font-medium">Save/$100</th>
-                    <th className="px-3 py-3 text-right font-medium">Edge</th>
+                    <th className="px-3 py-3 text-right font-medium"><Term define="save100">Save/$100</Term></th>
+                    <th className="px-3 py-3 text-right font-medium"><Term define="edge">Edge</Term></th>
                     <th className="px-2 py-3" />
                   </tr>
                 </thead>
@@ -282,11 +284,10 @@ export default function ComparePage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
           <p className="px-1 text-xs text-slate-600">
-            Best over price at the consensus line is highlighted (★). <span className="text-amber-300">Save/$100</span>{' '}
-            is the extra profit on a $100 stake vs. the median book. <span className="text-emerald-400">Edge</span> is the
-            best price's EV vs. the de-vigged consensus (fair) odds — positive means +EV. A small grey number marks a book
+            Best over price at the consensus line is highlighted (★). Hover <span className="text-amber-300">Save/$100</span>{' '}
+            or <span className="text-emerald-400">Edge</span> above for what they mean. A small grey number marks a book
             sitting on an alternate line.
           </p>
         </>
@@ -298,7 +299,7 @@ export default function ComparePage() {
               <p className="mt-1 text-sm text-slate-500">
                 Lines appear here on game days once tonight's props are fetched.
               </p>
-              <Link to="/games" className="mt-4 inline-block text-purple-400 hover:text-purple-300">
+              <Link to="/games" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
                 Browse games →
               </Link>
             </>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { summarizeMarket, formatOdds, MARKETS } from '../../lib/odds';
+import { Panel } from '../ui/panel';
 
 // Single markets first, then the combos (PR/PA/RA) set off by a divider.
 const SHOW = ['PTS', 'REB', 'AST', 'PR', 'PA', 'RA'];
@@ -16,11 +17,14 @@ export default function TeamPropsTable({ teamName, teamAbbr, players = [] }) {
   );
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-        <h3 className="font-bold text-slate-50">{teamName}</h3>
-        {teamAbbr && <span className="text-xs text-slate-500">{teamAbbr}</span>}
-      </div>
+    <Panel
+      header={
+        <>
+          <h3 className="font-bold text-slate-50">{teamName}</h3>
+          {teamAbbr && <span className="text-xs text-slate-500">{teamAbbr}</span>}
+        </>
+      }
+    >
       {sorted.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -71,6 +75,6 @@ export default function TeamPropsTable({ teamName, teamAbbr, players = [] }) {
       ) : (
         <p className="p-4 text-center text-sm text-slate-500">No props for this team.</p>
       )}
-    </div>
+    </Panel>
   );
 }

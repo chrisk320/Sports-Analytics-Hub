@@ -7,6 +7,8 @@ import {
   formatOdds,
   bookLabel,
 } from '../../lib/odds';
+import { Panel } from '../ui/panel';
+import { Term } from '../ui/term';
 
 function vig(over, under) {
   const a = americanToImpliedProb(over);
@@ -15,41 +17,43 @@ function vig(over, under) {
   return (a + b - 1) * 100;
 }
 
-export default function MarketDepthPanel({ player, props = [], marketId, nbaGames = [], onAddToSlip }) {
+export default function MarketDepthPanel({ player, props = [], marketId, nbaGames = [], onAddToSlip, hasWatchlist = true }) {
   const summary = summarizeMarket(props, marketId);
   const rows = summary?.rows || [];
   const bestOverBook = summary?.bestOver?.bookmaker;
   const bestUnderBook = summary?.bestUnder?.bookmaker;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-800 p-4">
-        <div>
-          <h3 className="font-bold text-slate-50">{player ? player.full_name : 'Market depth'}</h3>
-          <p className="text-xs text-slate-500">
-            {MARKETS[marketId]?.label} {summary?.line != null ? `· line ${summary.line}` : ''}
-          </p>
-        </div>
-        {summary?.bestOver && (
-          <button
-            onClick={() =>
-              onAddToSlip?.({
-                playerId: player?.player_id,
-                playerName: player?.full_name,
-                market: marketId,
-                side: 'over',
-                line: summary.line,
-                book: summary.bestOver.bookmaker,
-                price: summary.bestOver.over_odds,
-              })
-            }
-            className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-500"
-          >
-            ＋ best price
-          </button>
-        )}
-      </div>
-
+    <Panel
+      header={
+        <>
+          <div>
+            <h3 className="font-bold text-slate-50">{player ? player.full_name : 'Market depth'}</h3>
+            <p className="text-xs text-slate-500">
+              {MARKETS[marketId]?.label} {summary?.line != null ? `· line ${summary.line}` : ''}
+            </p>
+          </div>
+          {summary?.bestOver && (
+            <button
+              onClick={() =>
+                onAddToSlip?.({
+                  playerId: player?.player_id,
+                  playerName: player?.full_name,
+                  market: marketId,
+                  side: 'over',
+                  line: summary.line,
+                  book: summary.bestOver.bookmaker,
+                  price: summary.bestOver.over_odds,
+                })
+              }
+              className="rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-400"
+            >
+              ＋ best price
+            </button>
+          )}
+        </>
+      }
+    >
       {rows.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -59,7 +63,7 @@ export default function MarketDepthPanel({ player, props = [], marketId, nbaGame
                 <th className="px-2 py-2 text-center font-medium">Line</th>
                 <th className="px-2 py-2 text-center font-medium">Over</th>
                 <th className="px-2 py-2 text-center font-medium">Under</th>
-                <th className="px-4 py-2 text-right font-medium">Vig</th>
+                <th className="px-4 py-2 text-right font-medium"><Term define="vig">Vig</Term></th>
               </tr>
             </thead>
             <tbody className="font-mono tabular-nums">
@@ -98,7 +102,11 @@ export default function MarketDepthPanel({ player, props = [], marketId, nbaGame
         </div>
       ) : (
         <div className="p-6 text-center text-sm text-slate-500">
-          {player ? 'No lines for this market tonight.' : 'Hover a watchlist card to see its book table.'}
+          {player
+            ? 'No lines for this market tonight.'
+            : hasWatchlist
+              ? 'Hover a watchlist card to see its book table.'
+              : 'Add a player to your watchlist to compare book prices side-by-side here.'}
         </div>
       )}
 
@@ -121,6 +129,6 @@ export default function MarketDepthPanel({ player, props = [], marketId, nbaGame
           <p className="text-xs text-slate-600">No games scheduled.</p>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

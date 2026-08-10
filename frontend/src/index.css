@@ -1,12 +1,50 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* Keep ONLY a minimal base. The previous Vite-template boilerplate
    (body { display:flex; place-items:center }, a{color}, h1{font-size:3.2em},
    button{...}) was unlayered, so it overrode Tailwind utilities — it centered/
    shrink-wrapped the app, forced purple links, and oversized headings. */
 
+/* Single dark theme, mapped 1:1 from the app's existing literal Tailwind
+   palette (slate neutrals, purple accent, rose destructive). No light/.dark
+   split — the app has no theme toggle and color-scheme is hardcoded dark. */
 :root {
   color-scheme: dark;
+  --background: #020617; /* slate-950 */
+  --foreground: #f8fafc; /* slate-50 */
+  --card: #0f172a; /* slate-900 */
+  --card-foreground: #f8fafc;
+  --popover: #0f172a; /* slate-900 */
+  --popover-foreground: #f8fafc;
+  --primary: #a855f7; /* purple-500 — brighter, "Data Terminal" direction */
+  --primary-foreground: #08080a; /* near-black text on the bright primary, terminal-style inversion */
+  --secondary: #1e293b; /* slate-800 */
+  --secondary-foreground: #cbd5e1; /* slate-300 */
+  --muted: #1e293b; /* slate-800 */
+  --muted-foreground: #94a3b8; /* slate-400 */
+  --accent: #1e293b; /* slate-800 */
+  --accent-foreground: #f8fafc;
+  --destructive: #e11d48; /* rose-600 */
+  --destructive-foreground: #ffffff;
+  --border: #1e293b; /* slate-800 */
+  --input: #334155; /* slate-700 */
+  --ring: #a855f7; /* purple-500 */
+  --radius: 0.25rem; /* sharp/precise — "Data Terminal" direction */
+  --success: #34d399; /* emerald-400 */
+  --warning: #fcd34d; /* amber-300 */
+  --info: #22d3ee; /* cyan-400 — informational/structural accent, distinct from purple/emerald/amber/rose */
 }
 
 html,
@@ -35,4 +73,55 @@ body {
 }
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+@theme inline {
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
 }

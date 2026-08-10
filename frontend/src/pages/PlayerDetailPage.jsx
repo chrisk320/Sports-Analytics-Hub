@@ -6,6 +6,7 @@ import { MARKETS, summarizeMarket, avgFromLogs } from '../lib/odds';
 import RecentGamesBarChart from '../components/RecentGamesBarChart';
 import MarketToggle from '../components/home/MarketToggle';
 import TonightsPropsSidebar from '../components/player/TonightsPropsSidebar';
+import { Panel } from '../components/ui/panel';
 
 const fallbackImg = (e) => {
   e.target.src = 'https://cdn.nba.com/headshots/nba/latest/1040x760/fallback.png';
@@ -158,7 +159,7 @@ export default function PlayerDetailPage() {
     return (
       <div className="mx-auto max-w-3xl py-20 text-center text-slate-400">
         <p>Player not found.</p>
-        <Link to="/" className="mt-4 inline-block text-purple-400 hover:text-purple-300">
+        <Link to="/" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
           ← Back to dashboard
         </Link>
       </div>
@@ -177,7 +178,7 @@ export default function PlayerDetailPage() {
       </div>
 
       {/* Hero */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <Panel tone="primary">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
           <div className="flex items-center gap-4">
             <div className="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-purple-500 bg-slate-800 flex items-center justify-center">
@@ -206,7 +207,7 @@ export default function PlayerDetailPage() {
             <button
               onClick={addHeadlineToSlip}
               disabled={!summarizeMarket(props, 'PTS')?.bestOver}
-              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ＋ slip
             </button>
@@ -231,13 +232,13 @@ export default function PlayerDetailPage() {
           <StatCell label="USG%" value={season?.usg_pct} />
           <StatCell label="ORtg" value={season?.off_rating} title={RATING_NOTE} />
         </div>
-      </div>
+      </Panel>
 
       {/* Body: chart + logs (main) | props + matchup (sidebar) */}
       <div className="flex flex-col gap-6 xl:flex-row">
         <div className="min-w-0 flex-1 space-y-6">
           {/* Chart card */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <Panel tone="primary">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-50">Last {last10.length} games · {MARKETS[chartMarket]?.label}</h3>
@@ -254,10 +255,10 @@ export default function PlayerDetailPage() {
               <MarketToggle value={chartMarket} onChange={setChartMarket} />
             </div>
             <RecentGamesBarChart data={last10} marketId={chartMarket} line={chartLine} />
-          </div>
+          </Panel>
 
           {/* Game logs table */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <Panel tone="primary">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-bold text-slate-50">
                 {selectedOpp === 'ALL' ? 'Recent game logs' : `Game logs vs ${selectedOpp}`}
@@ -327,7 +328,7 @@ export default function PlayerDetailPage() {
               produced/allowed per 100 individual possessions) — not NBA.com's on-court team ratings, so they read
               differently than the numbers on nba.com.
             </p>
-          </div>
+          </Panel>
         </div>
 
         {/* Sidebar */}
@@ -341,7 +342,7 @@ export default function PlayerDetailPage() {
             onAddToSlip={addToSlip}
           />
 
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <Panel>
             <h3 className="mb-2 font-bold text-slate-50">Matchup</h3>
             {gameInfo && oppSplit ? (
               <div className="text-sm text-slate-300">
@@ -361,7 +362,7 @@ export default function PlayerDetailPage() {
             ) : (
               <p className="text-sm text-slate-500">No game scheduled — matchup splits appear on game days.</p>
             )}
-          </div>
+          </Panel>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatOdds, bestOdds, americanToDecimal, bookLabel, DEFAULT_BOOKS } from '../lib/odds';
+import { Panel } from '../components/ui/panel';
 
 // Each market maps to a backend futures endpoint (outrights). The backend
 // whitelists the sport keys; we just pick the league + market id here.
@@ -19,8 +20,8 @@ const KALSHI_MARKETS = [
 ];
 
 const segCls = (on) =>
-  `rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-    on ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-50'
+  `rounded-md px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition ${
+    on ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
   }`;
 
 const fmtVol = (v) =>
@@ -117,7 +118,7 @@ function SportsbookFutures() {
       ) : error ? (
         <EmptyBlock title={error} />
       ) : rows.length > 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900">
+        <Panel padded={false}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -162,7 +163,7 @@ function SportsbookFutures() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Panel>
       ) : (
         <EmptyBlock
           title="No odds posted for this market right now."
@@ -218,7 +219,7 @@ function KalshiFutures() {
         <EmptyBlock title={error} />
       ) : markets.length > 0 ? (
         <>
-          <div className="rounded-xl border border-slate-800 bg-slate-900">
+          <Panel padded={false}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -245,7 +246,7 @@ function KalshiFutures() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Panel>
           <p className="px-1 text-xs text-slate-600">
             Prices are in cents on Kalshi's 0–100¢ scale — a price of <span className="text-amber-300">22¢</span> means a
             ~22% implied probability. <span className="text-slate-400">Bid/Ask</span> is the current market; <span className="text-amber-300">Last</span> is the

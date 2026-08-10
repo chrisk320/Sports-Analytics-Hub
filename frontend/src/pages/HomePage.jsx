@@ -11,6 +11,7 @@ import AlertsFeed from '../components/home/AlertsFeed';
 import SlipCard from '../components/home/SlipCard';
 import HotEdgesTable from '../components/home/HotEdgesTable';
 import OffseasonBanner from '../components/OffseasonBanner';
+import { Panel } from '../components/ui/panel';
 
 const POLL_MS = 45000;
 
@@ -146,17 +147,17 @@ export default function HomePage() {
 
         {/* Last-season scoring leaders preview */}
         {topScorers.length > 0 && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <Panel tone="primary">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Last season's top scorers</h2>
-              <Link to="/explore" className="text-sm text-purple-400 hover:text-purple-300">Full leaderboards →</Link>
+              <Link to="/explore" className="text-sm text-cyan-400 hover:text-cyan-300">Full leaderboards →</Link>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
               {topScorers.map((p, i) => (
                 <Link
                   key={p.player_id}
                   to={`/players/${p.player_id}`}
-                  className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 p-3 hover:border-purple-600"
+                  className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 p-3 hover:border-purple-500"
                 >
                   <span className="font-mono text-slate-500">{i + 1}</span>
                   {p.headshot_url && <img src={p.headshot_url} alt="" className="h-9 w-9 rounded-full bg-slate-800 object-cover" />}
@@ -167,7 +168,7 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
-          </div>
+          </Panel>
         )}
 
         {/* Watchlist still works off historical L10 averages */}
@@ -197,7 +198,10 @@ export default function HomePage() {
 
       {/* Title + search + market toggle */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-3xl font-bold">Tonight's board</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Tonight's board</h1>
+          <p className="mt-1 text-slate-400">Find the best line before you bet — props, odds, and edges in one place.</p>
+        </div>
         <div className="flex flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="w-full sm:max-w-xs">
             <SearchBar
@@ -236,6 +240,7 @@ export default function HomePage() {
             marketId={watchlistMarket}
             nbaGames={nbaGames}
             onAddToSlip={addToSlip}
+            hasWatchlist={selectedPlayers.length > 0}
           />
         </div>
 

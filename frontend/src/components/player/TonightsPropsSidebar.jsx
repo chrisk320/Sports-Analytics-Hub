@@ -8,6 +8,7 @@ import {
   formatOdds,
   bookLabel,
 } from '../../lib/odds';
+import { Panel } from '../ui/panel';
 
 // Per-market prop rows for one player: consensus line, best over book/price,
 // L10 hit rate, EV, and a "+ slip" action. Driven by /playerprops/:id.
@@ -15,18 +16,20 @@ export default function TonightsPropsSidebar({ playerId, playerName, props = [],
   const rows = MARKET_ORDER.map((id) => summarizeMarket(props, id)).filter(Boolean);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="border-b border-slate-800 p-4">
-        <h3 className="font-bold text-slate-50">Tonight's props</h3>
-        {gameInfo ? (
-          <p className="text-xs text-slate-500">
-            {gameInfo.away_team} @ {gameInfo.home_team}
-          </p>
-        ) : (
-          <p className="text-xs text-slate-500">No game on the board</p>
-        )}
-      </div>
-
+    <Panel
+      header={
+        <div>
+          <h3 className="font-bold text-slate-50">Tonight's props</h3>
+          {gameInfo ? (
+            <p className="text-xs text-slate-500">
+              {gameInfo.away_team} @ {gameInfo.home_team}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">No game on the board</p>
+          )}
+        </div>
+      }
+    >
       {rows.length === 0 ? (
         <div className="p-6 text-center text-sm text-slate-500">No props posted for this player.</div>
       ) : (
@@ -83,7 +86,7 @@ export default function TonightsPropsSidebar({ playerId, playerName, props = [],
                         price: s.bestOver.over_odds,
                       })
                     }
-                    className="mt-2 w-full rounded-lg bg-purple-600 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-500"
+                    className="mt-2 w-full rounded-lg bg-purple-500 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-400"
                   >
                     ＋ add to slip
                   </button>
@@ -93,6 +96,6 @@ export default function TonightsPropsSidebar({ playerId, playerName, props = [],
           })}
         </ul>
       )}
-    </div>
+    </Panel>
   );
 }

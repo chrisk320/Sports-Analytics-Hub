@@ -1,24 +1,28 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { formatCents } from '../../lib/kalshi';
+import { Panel } from '../ui/panel';
 
 // Kalshi game-winner market as a per-team table: yes price (cents), implied
 // probability, and volume. `market` comes from buildKalshiMarket().
 export default function KalshiMarketCard({ market }) {
   const { title, url, sides, totalVolume } = market;
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-        <h3 className="font-bold text-slate-50">{title}</h3>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300"
-        >
-          Kalshi <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
+    <Panel
+      header={
+        <>
+          <h3 className="font-bold text-slate-50">{title}</h3>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300"
+          >
+            Kalshi <ExternalLink className="h-3 w-3" />
+          </a>
+        </>
+      }
+    >
       {sides.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -64,6 +68,6 @@ export default function KalshiMarketCard({ market }) {
       ) : (
         <p className="p-4 text-center text-sm text-slate-500">No market data.</p>
       )}
-    </div>
+    </Panel>
   );
 }
