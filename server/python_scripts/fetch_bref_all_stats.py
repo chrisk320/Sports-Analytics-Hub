@@ -645,11 +645,55 @@ def main(season_end_year=2026):
         print("=" * 60)
 
 
+def process_single_date(date_str):
+    """Process one specific date. Same path as --yesterday, different date.
+
+    Exists so the nightly job can be exercised against a date that actually has
+    games. `--yesterday` is useless for testing during the offseason: it finds
+    nothing and exits successfully, which proves only that the script starts.
+
+        TEST_MODE=1 python fetch_bref_all_stats.py --date 2026-04-01   # dry run
+        python fetch_bref_all_stats.py --date 2026-04-01              # real write
+    """
+    try:
+        target = date.fromisoformat(date_str)
+    except ValueError:
+        print(f"Invalid date: {date_str}. Use YYYY-MM-DD.")
+        sys.exit(1)
+
+    season_string = get_season_string(target)
+    print("=" * 60)
+    print("Fetch All Stats from Basketball Reference (Single Date)")
+    print("=" * 60)
+    print(f"Date: {target.isoformat()}")
+    print(f"Season: {season_string}")
+
+    if TEST_MODE:
+        print("\n** TEST_MODE enabled - DRY RUN **\n")
+        processed, advanced, _ = process_date(None, target, season_string, dry_run=True)
+        print(f"\nTEST_MODE complete - found {processed} players ({advanced} with advanced stats).")
+        return
+
+    with get_db_connection() as conn:
+        log_connection_info(conn)
+        setup_database(conn)
+        processed, advanced, inserted = process_date(conn, target, season_string)
+        conn.commit()
+        print("\n" + "=" * 60)
+        print(f"Complete! {inserted} game logs, {advanced} advanced stats inserted.")
+        print("=" * 60)
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         arg = sys.argv[1]
         if arg == "--yesterday":
             process_yesterday()
+        elif arg == "--date":
+            if len(sys.argv) < 3:
+                print("Usage: python fetch_bref_all_stats.py --date YYYY-MM-DD")
+                sys.exit(1)
+            process_single_date(sys.argv[2])
         else:
             try:
                 year = int(arg)
