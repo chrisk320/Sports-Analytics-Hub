@@ -26,7 +26,11 @@ from psycopg.types.json import Jsonb
 from dotenv import load_dotenv
 
 # Configuration
-TEST_MODE = False
+# TEST_MODE performs the full scrape and prints what WOULD be written, without
+# opening a DB connection or inserting anything. Settable from the environment so
+# a dry run doesn't require editing this file:
+#   TEST_MODE=1 python fetch_bref_all_stats.py --yesterday
+TEST_MODE = os.getenv("TEST_MODE", "").lower() in ("1", "true", "yes")
 
 # Season date ranges
 SEASON_START_DATES = {
