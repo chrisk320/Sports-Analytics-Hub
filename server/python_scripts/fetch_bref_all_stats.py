@@ -22,6 +22,7 @@ from io import StringIO
 import requests
 import pandas as pd
 import psycopg
+from psycopg.types.json import Jsonb
 from dotenv import load_dotenv
 
 # Configuration
@@ -382,16 +383,46 @@ def get_season_string(game_date):
 
 
 def insert_game_log(conn, player_id, game_date, stats, season_string):
-    """Insert a game log and return the game_log_id."""
+    """Insert a game log and return the game_log_id.
+
+    Dual-writes: the legacy per-stat columns (pts/reb/ast/...) AND the
+    sport-generic `stats` JSONB blob. The columns stay authoritative until the
+    contract migration drops them; writing both keeps the blob from going stale
+    in the meantime, so the multi-sport readers can be switched over whenever
+    they're ready without a separate backfill.
+
+    The conflict target is the full identity key (player_id, season, game_date,
+    game_seq, role) rather than the old three-column one. game_seq and role
+    carry DB defaults (1 and '') for NBA, so they don't need to be supplied,
+    but they DO have to appear in ON CONFLICT because that's the unique
+    constraint Postgres matches against.
+    """
+    basic = {
+        "min": stats["min"],
+        "pts": stats["pts"],
+        "reb": stats["reb"],
+        "ast": stats["ast"],
+        "stl": stats["stl"],
+        "blk": stats["blk"],
+    }
+    # Match the migration's jsonb_strip_nulls: omit absent stats rather than
+    # storing explicit nulls, so a blob built here is byte-identical to a
+    # backfilled one.
+    basic = {k: v for k, v in basic.items() if v is not None}
+
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO player_game_logs
-            (player_id, season, game_date, opponent, min, pts, reb, ast, stl, blk)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (player_id, season, game_date) DO UPDATE
+            (player_id, season, game_date, opponent, min, pts, reb, ast, stl, blk, sport, stats)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'nba', %s)
+            ON CONFLICT (player_id, season, game_date, game_seq, role) DO UPDATE
             SET min = EXCLUDED.min, pts = EXCLUDED.pts, reb = EXCLUDED.reb,
-                ast = EXCLUDED.ast, stl = EXCLUDED.stl, blk = EXCLUDED.blk
+                ast = EXCLUDED.ast, stl = EXCLUDED.stl, blk = EXCLUDED.blk,
+                -- Merge rather than replace: advanced stats are written to the
+                -- same blob by upsert_advanced_stats() in a later pass, and a
+                -- re-run of this function must not clobber them.
+                stats = player_game_logs.stats || EXCLUDED.stats
             RETURNING game_log_id;
             """,
             (
@@ -405,6 +436,7 @@ def insert_game_log(conn, player_id, game_date, stats, season_string):
                 stats["ast"],
                 stats["stl"],
                 stats["blk"],
+                Jsonb(basic),
             ),
         )
         result = cur.fetchone()
@@ -412,10 +444,26 @@ def insert_game_log(conn, player_id, game_date, stats, season_string):
 
 
 def upsert_advanced_stats(conn, game_log_id, stats):
-    """Insert or update advanced stats for a game log."""
+    """Insert or update advanced stats for a game log.
+
+    Dual-writes, like insert_game_log: the advanced_box_scores row stays
+    authoritative, and the same six metrics are merged into
+    player_game_logs.stats under the shorter key names the migration used
+    (off_rating/def_rating/net_rating/efg_pct/ts_pct/usg_pct).
+    """
     # Skip if no advanced stats available
     if stats.get('ortg') is None:
         return False
+
+    advanced = {
+        'off_rating': stats['ortg'],
+        'def_rating': stats['drtg'],
+        'net_rating': stats['net_rtg'],
+        'efg_pct': stats['efg_pct'],
+        'ts_pct': stats['ts_pct'],
+        'usg_pct': stats['usg_pct'],
+    }
+    advanced = {k: v for k, v in advanced.items() if v is not None}
 
     with conn.cursor() as cur:
         cur.execute("""
@@ -440,7 +488,14 @@ def upsert_advanced_stats(conn, game_log_id, stats):
             stats['net_rtg'],
             stats['usg_pct'],
         ))
-        return cur.fetchone() is not None
+        wrote = cur.fetchone() is not None
+
+        # Merge (||) so the basic stats written by insert_game_log survive.
+        cur.execute(
+            "UPDATE player_game_logs SET stats = stats || %s WHERE game_log_id = %s",
+            (Jsonb(advanced), game_log_id),
+        )
+        return wrote
 
 
 def process_date(conn, target_date, season_string, dry_run=False):

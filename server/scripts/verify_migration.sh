@@ -28,7 +28,7 @@ echo
 
 echo "Migrations applied:"
 q "SELECT name FROM pgmigrations ORDER BY id" | sed 's/^/  /'
-check "migration count" "5" "$(q "SELECT count(*) FROM pgmigrations")"
+check "migration count" "6" "$(q "SELECT count(*) FROM pgmigrations")"
 echo
 
 echo "Data integrity — the JSONB blob must equal the source columns:"
@@ -53,9 +53,11 @@ check "players not tagged 'nba'"   "0" "$(q "SELECT count(*) FROM players WHERE 
 echo
 
 echo "Schema objects:"
-check "new identity index present" "1" "$(q "SELECT count(*) FROM pg_indexes WHERE indexname='player_game_logs_identity_idx'")"
-check "old unique constraint gone" "0" "$(q "SELECT count(*) FROM pg_constraint WHERE conname='player_game_logs_player_id_season_game_date_key'")"
-check "players sequence in sync"   "$(q "SELECT max(player_id) FROM players")" "$(q "SELECT last_value FROM players_player_id_seq")"
+check "identity constraint present" "1" "$(q "SELECT count(*) FROM pg_constraint WHERE conname='player_game_logs_identity_key'")"
+check "old unique constraint gone"  "0" "$(q "SELECT count(*) FROM pg_constraint WHERE conname='player_game_logs_player_id_season_game_date_key'")"
+check "role is NOT NULL"            "NO" "$(q "SELECT is_nullable FROM information_schema.columns WHERE table_name='player_game_logs' AND column_name='role'")"
+check "rows with NULL role"         "0" "$(q "SELECT count(*) FROM player_game_logs WHERE role IS NULL")"
+check "players sequence in sync"    "$(q "SELECT max(player_id) FROM players")" "$(q "SELECT last_value FROM players_player_id_seq")"
 echo
 
 echo "Row counts (compare against your pre-migration numbers):"
