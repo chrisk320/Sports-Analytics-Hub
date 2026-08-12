@@ -1,11 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MARKETS, formatOdds, bookLabel } from '../../lib/odds';
+import { formatOdds, bookLabel } from '../../lib/odds';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 import { Panel } from '../ui/panel';
 
 // Full-width flat table of the slate's best price edges (price-based; no
 // per-player game-log fetch). Clicking a row pins that player's depth panel.
 export default function HotEdgesTable({ edges = [], onPin, limit = 15 }) {
+  const { sport } = useSport();
   const rows = edges.filter((e) => e.savings > 0).slice(0, limit);
 
   return (
@@ -50,7 +53,7 @@ export default function HotEdgesTable({ edges = [], onPin, limit = 15 }) {
                       e.playerName
                     )}
                   </td>
-                  <td className="px-2 py-2 text-slate-400">{MARKETS[e.marketId]?.label}</td>
+                  <td className="px-2 py-2 text-slate-400">{marketLabel(sport, e.marketId)}</td>
                   <td className="px-2 py-2 text-center font-mono tabular-nums text-slate-300">{e.line}</td>
                   <td className="px-2 py-2 text-center font-mono tabular-nums font-semibold text-emerald-400">
                     {formatOdds(e.odds)}

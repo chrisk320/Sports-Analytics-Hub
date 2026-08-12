@@ -6,6 +6,7 @@ import { DEFAULT_BOOKS } from './lib/odds';
 import Header from './components/Header';
 import GameModal from './components/GameModal';
 import ChatBot from './components/ChatBot';
+import { SportProvider } from './context/SportContext';
 
 export default function Layout() {
   const [token, setToken] = useState(() => {
@@ -234,6 +235,9 @@ export default function Layout() {
   };
 
   return (
+    // PR 7 drives this from the :sport route segment. Until then it defaults to
+    // NBA, which preserves current behavior exactly.
+    <SportProvider>
     <div className="min-h-screen w-full bg-slate-950 font-sans text-slate-50 flex flex-col">
       <Header isLoading={isLoading} user={user} setToken={setToken} authPrompt={authPrompt} />
 
@@ -265,5 +269,6 @@ export default function Layout() {
         <p>Sports Analytics Hub</p>
       </footer>
     </div>
+    </SportProvider>
   );
 }

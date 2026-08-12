@@ -1,7 +1,5 @@
 import React from 'react';
 import {
-  MARKET_ORDER,
-  MARKETS,
   summarizeMarket,
   hitRate,
   evPercent,
@@ -9,11 +7,14 @@ import {
   bookLabel,
 } from '../../lib/odds';
 import { Panel } from '../ui/panel';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 
 // Per-market prop rows for one player: consensus line, best over book/price,
 // L10 hit rate, EV, and a "+ slip" action. Driven by /playerprops/:id.
 export default function TonightsPropsSidebar({ playerId, playerName, props = [], logs = [], gameInfo, onAddToSlip }) {
-  const rows = MARKET_ORDER.map((id) => summarizeMarket(props, id)).filter(Boolean);
+  const { sport, order } = useSport();
+  const rows = order.map((id) => summarizeMarket(sport, props, id)).filter(Boolean);
 
   return (
     <Panel
@@ -36,13 +37,13 @@ export default function TonightsPropsSidebar({ playerId, playerName, props = [],
         <ul className="divide-y divide-slate-800/70">
           {rows.map((s) => {
             const last10 = (logs || []).slice(0, 10);
-            const hr = hitRate(last10, s.marketId, s.line, 'over');
+            const hr = hitRate(sport, last10, s.marketId, s.line, 'over');
             const ev = s.bestOver ? evPercent(hr, s.bestOver.over_odds) : null;
             return (
               <li key={s.marketId} className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-semibold text-slate-100">{MARKETS[s.marketId]?.label}</span>{' '}
+                    <span className="font-semibold text-slate-100">{marketLabel(sport, s.marketId)}</span>{' '}
                     <span className="font-mono tabular-nums text-slate-400">O {s.line}</span>
                   </div>
                   {s.bestOver && (

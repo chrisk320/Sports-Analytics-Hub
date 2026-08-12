@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { User } from 'lucide-react';
 import MiniSparkline from './MiniSparkline';
 import { Term } from '../ui/term';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 import {
   summarizeMarket,
   statFromLog,
@@ -11,7 +13,6 @@ import {
   evPercent,
   formatOdds,
   bookLabel,
-  MARKETS,
 } from '../../lib/odds';
 
 const fallbackImg = (e) => {
@@ -32,14 +33,15 @@ export default function WatchlistCard({
   onRemove,
 }) {
   const last10 = (logs || []).slice(0, 10);
-  const summary = summarizeMarket(props, marketId);
+  const { sport } = useSport();
+  const summary = summarizeMarket(sport, props, marketId);
   const line = summary?.line ?? null;
   const best = summary?.bestOver ?? null;
-  const avg = avgFromLogs(last10, marketId);
-  const hr = hitRate(last10, marketId, line, 'over');
+  const avg = avgFromLogs(sport, last10, marketId);
+  const hr = hitRate(sport, last10, marketId, line, 'over');
   const ev = best ? evPercent(hr, best.over_odds) : null;
-  const sparkValues = [...last10].reverse().map((l) => statFromLog(l, marketId));
-  const overCount = line != null ? last10.filter((l) => statFromLog(l, marketId) >= line).length : null;
+  const sparkValues = [...last10].reverse().map((l) => statFromLog(sport, l, marketId));
+  const overCount = line != null ? last10.filter((l) => statFromLog(sport, l, marketId) >= line).length : null;
 
   return (
     <div
@@ -72,7 +74,7 @@ export default function WatchlistCard({
           >
             {player.full_name}
           </Link>
-          <p className="text-xs text-slate-500">{MARKETS[marketId]?.label} market · click to pin</p>
+          <p className="text-xs text-slate-500">{marketLabel(sport, marketId)} market · click to pin</p>
         </div>
         {onRemove && (
           <button

@@ -1,8 +1,11 @@
 import React from 'react';
-import { MARKETS, formatOdds, bookLabel } from '../../lib/odds';
+import { formatOdds, bookLabel } from '../../lib/odds';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 
 // Single-line scrolling strip of the slate's best price edges.
 export default function LiveTicker({ edges = [], lastUpdated }) {
+  const { sport } = useSport();
   const items = edges.filter((e) => e.savings > 0).slice(0, 20);
   // Duplicate the list so the marquee can loop seamlessly (-50% translate).
   const loop = items.length ? [...items, ...items] : [];
@@ -20,7 +23,7 @@ export default function LiveTicker({ edges = [], lastUpdated }) {
             {loop.map((e, i) => (
               <span key={`${e.key}-${i}`} className="text-sm text-slate-300">
                 <span className="font-semibold text-slate-100">{e.playerName}</span>{' '}
-                {MARKETS[e.marketId]?.label} o{e.line}{' '}
+                {marketLabel(sport, e.marketId)} o{e.line}{' '}
                 <span className="font-mono tabular-nums text-emerald-400">{formatOdds(e.odds)}</span>{' '}
                 <span className="text-slate-500">{bookLabel(e.book)}</span>{' '}
                 <span className="font-mono tabular-nums text-amber-300">+${e.savings.toFixed(2)}/100</span>

@@ -1,5 +1,14 @@
-// Shared betting math + market config. Reused across Home, Player Detail,
-// Game Detail, and Sportsbook Compare. The single most-reused module.
+// Shared betting math. Reused across Home, Player Detail, Game Detail, and
+// Sportsbook Compare. The single most-reused module.
+//
+// Two halves:
+//   1. Pure American-odds math — sport-agnostic, no configuration.
+//   2. Market-aware helpers — these take `sport` as their FIRST argument and
+//      resolve market definitions from lib/markets.js.
+//
+// The market definitions themselves used to live here as a hardcoded NBA
+// MARKETS object; they now live in lib/markets.js keyed by sport.
+import { marketDef, marketOrder } from './markets';
 
 /* ------------------------------------------------------------------ */
 /* American odds math                                                  */
@@ -72,36 +81,26 @@ export function parlayOdds(oddsList) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Markets — only the ones our backend actually fetches/stores         */
-/* (player_threes / 3PM is NOT fetched, so it's intentionally absent). */
-/* `stat` lists the game-log columns to sum for hit-rate / sparklines. */
+/* Market-aware helpers — all take `sport` FIRST                       */
 /* ------------------------------------------------------------------ */
 
-export const MARKETS = {
-  PTS: { key: 'player_points', label: 'PTS', stat: ['pts'] },
-  REB: { key: 'player_rebounds', label: 'REB', stat: ['reb'] },
-  AST: { key: 'player_assists', label: 'AST', stat: ['ast'] },
-  PR: { key: 'player_points_rebounds', label: 'PR', stat: ['pts', 'reb'] },
-  PA: { key: 'player_points_assists', label: 'PA', stat: ['pts', 'ast'] },
-  RA: { key: 'player_rebounds_assists', label: 'RA', stat: ['reb', 'ast'] },
-};
-
-export const MARKET_ORDER = ['PTS', 'REB', 'AST', 'PR', 'PA', 'RA'];
-
 // Value of a market for one game log (sum of its component stats).
-export function statFromLog(log, marketId) {
-  const m = MARKETS[marketId];
+// Reads keys out of the JSONB stats blob flattened onto the log row, so the
+// same function serves 'pts' for NBA and 'passing_yards' for NFL.
+export function statFromLog(sport, log, marketId) {
+  const m = marketDef(sport, marketId);
   if (!m || !log) return null;
   return m.stat.reduce((sum, k) => sum + (Number(log[k]) || 0), 0);
 }
 
 // Fraction of games (0..1) the player cleared `line` for `marketId`.
-export function hitRate(logs, marketId, line, side = 'over') {
+// A push (exactly on the line) counts as an over hit.
+export function hitRate(sport, logs, marketId, line, side = 'over') {
   if (!logs?.length || line == null) return null;
   let hits = 0;
   let counted = 0;
   for (const log of logs) {
-    const v = statFromLog(log, marketId);
+    const v = statFromLog(sport, log, marketId);
     if (v == null) continue;
     counted += 1;
     if (side === 'over' ? v >= line : v < line) hits += 1;
@@ -110,17 +109,17 @@ export function hitRate(logs, marketId, line, side = 'over') {
 }
 
 // Average market value over the supplied logs.
-export function avgFromLogs(logs, marketId) {
+export function avgFromLogs(sport, logs, marketId) {
   if (!logs?.length) return null;
-  const vals = logs.map((l) => statFromLog(l, marketId)).filter((v) => v != null);
+  const vals = logs.map((l) => statFromLog(sport, l, marketId)).filter((v) => v != null);
   if (!vals.length) return null;
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
 // Collapse a player's prop rows for one market into a tidy summary:
 // consensus line, best over/under book+price, and over-side savings.
-export function summarizeMarket(props, marketId) {
-  const key = MARKETS[marketId]?.key;
+export function summarizeMarket(sport, props, marketId) {
+  const key = marketDef(sport, marketId)?.key;
   if (!key) return null;
   const rows = (props || []).filter((p) => p.market === key);
   if (!rows.length) return null;
@@ -153,7 +152,7 @@ export function summarizeMarket(props, marketId) {
 // Group flat prop rows by player, then emit one "edge" per (player, market):
 // the best over price, consensus line, and savings/$100 vs the median book.
 // Sorted by savings desc. Reused by Home (ticker/alerts/hot-edges) + Compare.
-export function computeEdges(props) {
+export function computeEdges(sport, props) {
   const byPlayer = new Map();
   for (const r of props || []) {
     const pid = r.player_id ?? r.player_name;
@@ -173,8 +172,8 @@ export function computeEdges(props) {
 
   const edges = [];
   for (const p of byPlayer.values()) {
-    for (const marketId of MARKET_ORDER) {
-      const s = summarizeMarket(p.rows, marketId);
+    for (const marketId of marketOrder(sport)) {
+      const s = summarizeMarket(sport, p.rows, marketId);
       if (!s || !s.bestOver) continue;
       edges.push({
         key: `${p.player_id ?? p.player_name}-${marketId}`,

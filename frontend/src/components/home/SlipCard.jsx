@@ -1,10 +1,13 @@
 import React from 'react';
-import { parlayOdds, americanToDecimal, formatOdds, bookLabel, MARKETS } from '../../lib/odds';
+import { parlayOdds, americanToDecimal, formatOdds, bookLabel } from '../../lib/odds';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 import { Panel } from '../ui/panel';
 
 const STAKE = 10;
 
 export default function SlipCard({ slip = [], onRemove, onClear }) {
+  const { sport } = useSport();
   const parlay = parlayOdds(slip.map((p) => p.price));
   const dec = americanToDecimal(parlay);
   const payout = dec ? (STAKE * dec).toFixed(2) : null;
@@ -36,7 +39,7 @@ export default function SlipCard({ slip = [], onRemove, onClear }) {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-100">{p.playerName}</p>
                   <p className="text-xs text-slate-500">
-                    {p.side === 'over' ? 'Over' : 'Under'} {p.line} {MARKETS[p.market]?.label} ·{' '}
+                    {p.side === 'over' ? 'Over' : 'Under'} {p.line} {marketLabel(sport, p.market)} ·{' '}
                     {bookLabel(p.book)}
                   </p>
                 </div>

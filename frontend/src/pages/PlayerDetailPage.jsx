@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { User, Star, Loader, ChevronLeft } from 'lucide-react';
 import { api } from '../lib/api';
-import { MARKETS, summarizeMarket, avgFromLogs } from '../lib/odds';
+import { summarizeMarket, avgFromLogs } from '../lib/odds';
+import { marketLabel } from '../lib/markets';
+import { useSport } from '@/context/SportContext';
 import RecentGamesBarChart from '../components/RecentGamesBarChart';
 import MarketToggle from '../components/home/MarketToggle';
 import TonightsPropsSidebar from '../components/player/TonightsPropsSidebar';
@@ -37,6 +39,7 @@ export default function PlayerDetailPage() {
   const { playerId } = useParams();
   const { allPlayers, allTeams, addToSlip, selectedPlayers, handleAddPlayer, handleRemovePlayer } =
     useOutletContext();
+  const { sport, order, defaultMarket, recentWindow, recentLabel } = useSport();
 
   const [loading, setLoading] = useState(true);
   const [fetchedPlayer, setFetchedPlayer] = useState(null);
@@ -44,7 +47,7 @@ export default function PlayerDetailPage() {
   const [logs, setLogs] = useState([]);
   const [props, setProps] = useState([]);
   const [gameInfo, setGameInfo] = useState(null);
-  const [chartMarket, setChartMarket] = useState('PTS');
+  const [chartMarket, setChartMarket] = useState(defaultMarket);
   const [selectedOpp, setSelectedOpp] = useState('ALL');
   const [displayLogs, setDisplayLogs] = useState([]);
   const [oppSplit, setOppSplit] = useState(null);
@@ -60,7 +63,7 @@ export default function PlayerDetailPage() {
     let cancelled = false;
     setLoading(true);
     setSelectedOpp('ALL');
-    setChartMarket('PTS');
+    setChartMarket(defaultMarket);
     (async () => {
       const [seasonRes, logsRes, propsRes, gameRes, playerRes] = await Promise.all([
         api.get(`/players/${playerId}/season-averages`).catch(() => ({ data: null })),
@@ -81,7 +84,7 @@ export default function PlayerDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [playerId]);
+  }, [playerId, defaultMarket]);
 
   // Resolve tonight's opponent + fetch the player's splits vs them
   useEffect(() => {
@@ -127,14 +130,14 @@ export default function PlayerDetailPage() {
     isFav ? handleRemovePlayer(player.player_id) : handleAddPlayer(player);
   };
 
-  const chartSummary = summarizeMarket(props, chartMarket);
+  const chartSummary = summarizeMarket(sport, props, chartMarket);
   const chartLine = chartSummary?.line ?? null;
-  const last10 = logs.slice(0, 10);
-  const l10avg = avgFromLogs(last10, chartMarket);
-  const oppAvg = oppSplit ? avgFromLogs(oppSplit.logs, chartMarket) : null;
+  const last10 = logs.slice(0, recentWindow);
+  const l10avg = avgFromLogs(sport, last10, chartMarket);
+  const oppAvg = oppSplit ? avgFromLogs(sport, oppSplit.logs, chartMarket) : null;
 
   const addHeadlineToSlip = () => {
-    const s = summarizeMarket(props, 'PTS') || summarizeMarket(props, chartMarket);
+    const s = summarizeMarket(sport, props, defaultMarket) || summarizeMarket(sport, props, chartMarket);
     if (!s?.bestOver || !player) return;
     addToSlip({
       playerId: player.player_id,
@@ -206,7 +209,7 @@ export default function PlayerDetailPage() {
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <button
               onClick={addHeadlineToSlip}
-              disabled={!summarizeMarket(props, 'PTS')?.bestOver}
+              disabled={!summarizeMarket(sport, props, defaultMarket)?.bestOver}
               className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ＋ slip
@@ -241,9 +244,9 @@ export default function PlayerDetailPage() {
           <Panel tone="primary">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-bold text-slate-50">Last {last10.length} games · {MARKETS[chartMarket]?.label}</h3>
+                <h3 className="font-bold text-slate-50">Last {last10.length} games · {marketLabel(sport, chartMarket)}</h3>
                 <p className="text-xs text-slate-500">
-                  L10 avg <span className="font-mono tabular-nums text-slate-300">{l10avg != null ? l10avg.toFixed(1) : '—'}</span>
+                  {recentLabel} avg <span className="font-mono tabular-nums text-slate-300">{l10avg != null ? l10avg.toFixed(1) : '—'}</span>
                   {oppAvg != null && (
                     <> · vs {oppSplit.opp} <span className="font-mono tabular-nums text-slate-300">{oppAvg.toFixed(1)}</span></>
                   )}
@@ -351,9 +354,13 @@ export default function PlayerDetailPage() {
                 </p>
                 {oppSplit.logs.length > 0 ? (
                   <div className="mt-2 grid grid-cols-3 gap-2">
-                    <StatCell label="PTS" value={avgFromLogs(oppSplit.logs, 'PTS')?.toFixed(1)} />
-                    <StatCell label="REB" value={avgFromLogs(oppSplit.logs, 'REB')?.toFixed(1)} />
-                    <StatCell label="AST" value={avgFromLogs(oppSplit.logs, 'AST')?.toFixed(1)} />
+                    {order.slice(0, 3).map((id) => (
+                      <StatCell
+                        key={id}
+                        label={marketLabel(sport, id)}
+                        value={avgFromLogs(sport, oppSplit.logs, id)?.toFixed(1)}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <p className="mt-2 text-xs text-slate-500">No prior meetings on record this season.</p>

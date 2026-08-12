@@ -1,5 +1,7 @@
 import React from 'react';
-import { MARKETS, formatOdds, bookLabel } from '../../lib/odds';
+import { formatOdds, bookLabel } from '../../lib/odds';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 import { Panel } from '../ui/panel';
 
 const TAG_STYLES = {
@@ -19,6 +21,7 @@ function Tag({ kind }) {
 // Derived feed — BEST/EDGE signals from current prices + a STATUS line.
 // True line-move/injury alerts need data we don't store yet (see plan).
 export default function AlertsFeed({ edges = [], gameCount = 0, lastUpdated }) {
+  const { sport } = useSport();
   const stamp = lastUpdated
     ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
@@ -37,7 +40,7 @@ export default function AlertsFeed({ edges = [], gameCount = 0, lastUpdated }) {
       text: (
         <>
           <span className="font-semibold text-slate-100">{e.playerName}</span>{' '}
-          {MARKETS[e.marketId]?.label} o{e.line} best at {bookLabel(e.book)}{' '}
+          {marketLabel(sport, e.marketId)} o{e.line} best at {bookLabel(e.book)}{' '}
           <span className="font-mono tabular-nums text-emerald-400">{formatOdds(e.odds)}</span>{' '}
           <span className="font-mono tabular-nums text-amber-300">(+${e.savings.toFixed(2)}/100)</span>
         </>

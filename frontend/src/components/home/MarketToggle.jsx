@@ -1,12 +1,19 @@
 import React from 'react';
-import { MARKETS, MARKET_ORDER } from '../../lib/odds';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 
-// Segmented control for the active prop market. Defaults to all backed markets
-// (PTS/REB/AST + the three combos — 3PM isn't fetched by the backend).
-export default function MarketToggle({ value, onChange, options = MARKET_ORDER }) {
+// Segmented control for the active prop market.
+//
+// Defaults to every market the current sport models, so this renders
+// PTS/REB/AST/... for the NBA and H/TB/HR/K for the MLB with no change here.
+// Callers can still pass `options` to narrow it (e.g. to a player's position).
+export default function MarketToggle({ value, onChange, options }) {
+  const { sport, order } = useSport();
+  const ids = options ?? order;
+
   return (
     <div className="inline-flex rounded-lg border border-slate-700 bg-slate-900 p-1">
-      {options.map((id) => {
+      {ids.map((id) => {
         const active = id === value;
         return (
           <button
@@ -18,7 +25,7 @@ export default function MarketToggle({ value, onChange, options = MARKET_ORDER }
                 : 'text-slate-400 hover:text-slate-50 hover:bg-slate-800'
             }`}
           >
-            {MARKETS[id]?.label || id}
+            {marketLabel(sport, id)}
           </button>
         );
       })}

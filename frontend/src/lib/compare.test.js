@@ -20,7 +20,7 @@ const BOOKS = ['draftkings', 'fanduel', 'betmgm', 'betus'];
 
 describe('buildCompareRows — grouping', () => {
   it('collapses all books for one player+market into a single row', () => {
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ bookmaker: 'draftkings' }),
         row({ bookmaker: 'fanduel' }),
@@ -34,7 +34,7 @@ describe('buildCompareRows — grouping', () => {
   });
 
   it('keeps separate rows per market and per player', () => {
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ market: 'player_points' }),
         row({ market: 'player_rebounds' }),
@@ -46,7 +46,7 @@ describe('buildCompareRows — grouping', () => {
   });
 
   it('ignores books the user has not selected', () => {
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [row({ bookmaker: 'draftkings' }), row({ bookmaker: 'not_selected' })],
       ['draftkings']
     );
@@ -54,18 +54,18 @@ describe('buildCompareRows — grouping', () => {
   });
 
   it('ignores markets the app does not model', () => {
-    expect(buildCompareRows([row({ market: 'player_blocks_we_dont_model' })], BOOKS)).toHaveLength(0);
+    expect(buildCompareRows('nba', [row({ market: 'player_blocks_we_dont_model' })], BOOKS)).toHaveLength(0);
   });
 
   it('handles empty / null input', () => {
-    expect(buildCompareRows([], BOOKS)).toEqual([]);
-    expect(buildCompareRows(null, BOOKS)).toEqual([]);
+    expect(buildCompareRows('nba', [], BOOKS)).toEqual([]);
+    expect(buildCompareRows('nba', null, BOOKS)).toEqual([]);
   });
 });
 
 describe('buildCompareRows — consensus line', () => {
   it('uses the most common line', () => {
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ bookmaker: 'draftkings', over_line: 25.5 }),
         row({ bookmaker: 'fanduel', over_line: 26.5 }),
@@ -78,7 +78,7 @@ describe('buildCompareRows — consensus line', () => {
 
   // Documented tie-break: equal counts resolve to the LOWER line.
   it('breaks a tie toward the lower line', () => {
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [row({ bookmaker: 'draftkings', over_line: 25.5 }), row({ bookmaker: 'fanduel', over_line: 26.5 })],
       BOOKS
     );
@@ -89,7 +89,7 @@ describe('buildCompareRows — consensus line', () => {
 describe('buildCompareRows — alternate lines are excluded from best-price math', () => {
   // This is the core correctness claim of the module: a book sitting on a
   // different line is not comparable, even if its raw price looks better.
-  const rows = buildCompareRows(
+  const rows = buildCompareRows('nba', 
     [
       row({ bookmaker: 'draftkings', over_line: 25.5, over_odds: -115 }),
       row({ bookmaker: 'fanduel', over_line: 25.5, over_odds: -105 }),
@@ -117,7 +117,7 @@ describe('buildCompareRows — alternate lines are excluded from best-price math
 
 describe('buildCompareRows — de-vig / fair odds', () => {
   it('returns null fair odds below the two-book minimum', () => {
-    const rows = buildCompareRows([row({ bookmaker: 'draftkings' })], BOOKS);
+    const rows = buildCompareRows('nba', [row({ bookmaker: 'draftkings' })], BOOKS);
     expect(rows[0].fairProb).toBeNull();
     expect(rows[0].fairOdds).toBeNull();
     expect(rows[0].edgePct).toBeNull();
@@ -125,7 +125,7 @@ describe('buildCompareRows — de-vig / fair odds', () => {
 
   it('de-vigs a balanced two-way market to a 50% fair probability', () => {
     // Both books -110/-110: proportional de-vig gives exactly 0.5.
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ bookmaker: 'draftkings', over_odds: -110, under_odds: -110 }),
         row({ bookmaker: 'fanduel', over_odds: -110, under_odds: -110 }),
@@ -138,7 +138,7 @@ describe('buildCompareRows — de-vig / fair odds', () => {
 
   it('reports negative edge when the best price is worse than fair', () => {
     // Fair is 50% (+100) but the best available over is -110 -> you are laying juice.
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ bookmaker: 'draftkings', over_odds: -110, under_odds: -110 }),
         row({ bookmaker: 'fanduel', over_odds: -110, under_odds: -110 }),
@@ -150,7 +150,7 @@ describe('buildCompareRows — de-vig / fair odds', () => {
 
   it('reports positive edge when one book prices the over above fair', () => {
     // Two tight books set fair near 50%; a third offers +150 on the same line.
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ bookmaker: 'draftkings', over_odds: -110, under_odds: -110 }),
         row({ bookmaker: 'fanduel', over_odds: -110, under_odds: -110 }),
@@ -164,7 +164,7 @@ describe('buildCompareRows — de-vig / fair odds', () => {
 
   it('ignores one-way books when estimating fair odds', () => {
     // Only one book has BOTH sides, so we are below MIN_DEVIG_BOOKS.
-    const rows = buildCompareRows(
+    const rows = buildCompareRows('nba', 
       [
         row({ bookmaker: 'draftkings', over_odds: -110, under_odds: -110 }),
         row({ bookmaker: 'fanduel', over_odds: -110, under_odds: null }),

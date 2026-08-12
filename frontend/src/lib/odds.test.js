@@ -157,22 +157,22 @@ describe('statFromLog', () => {
   const log = { pts: 30, reb: 10, ast: 5 };
 
   it('reads a single-stat market', () => {
-    expect(statFromLog(log, 'PTS')).toBe(30);
+    expect(statFromLog('nba', log, 'PTS')).toBe(30);
   });
 
   it('sums the components of a combo market', () => {
-    expect(statFromLog(log, 'PR')).toBe(40);
-    expect(statFromLog(log, 'PA')).toBe(35);
-    expect(statFromLog(log, 'RA')).toBe(15);
+    expect(statFromLog('nba', log, 'PR')).toBe(40);
+    expect(statFromLog('nba', log, 'PA')).toBe(35);
+    expect(statFromLog('nba', log, 'RA')).toBe(15);
   });
 
   it('returns null for an unknown market or missing log', () => {
-    expect(statFromLog(log, 'NOPE')).toBeNull();
-    expect(statFromLog(null, 'PTS')).toBeNull();
+    expect(statFromLog('nba', log, 'NOPE')).toBeNull();
+    expect(statFromLog('nba', null, 'PTS')).toBeNull();
   });
 
   it('treats a missing stat key as 0 rather than NaN', () => {
-    expect(statFromLog({ pts: 20 }, 'PR')).toBe(20);
+    expect(statFromLog('nba', { pts: 20 }, 'PR')).toBe(20);
   });
 });
 
@@ -180,33 +180,33 @@ describe('hitRate', () => {
   const logs = [{ pts: 30 }, { pts: 20 }, { pts: 26 }, { pts: 10 }];
 
   it('counts games at or above the line as overs', () => {
-    expect(hitRate(logs, 'PTS', 25.5, 'over')).toBeCloseTo(0.5, 10);
+    expect(hitRate('nba', logs, 'PTS', 25.5, 'over')).toBeCloseTo(0.5, 10);
   });
 
   it('counts unders as strictly below the line', () => {
-    expect(hitRate(logs, 'PTS', 25.5, 'under')).toBeCloseTo(0.5, 10);
+    expect(hitRate('nba', logs, 'PTS', 25.5, 'under')).toBeCloseTo(0.5, 10);
   });
 
   // Documented behavior: a push (exactly on the line) is scored as a hit for
   // the over. Worth pinning — it's a real modeling choice, not an accident.
   it('scores an exact push as an over hit', () => {
-    expect(hitRate([{ pts: 25 }], 'PTS', 25, 'over')).toBe(1);
-    expect(hitRate([{ pts: 25 }], 'PTS', 25, 'under')).toBe(0);
+    expect(hitRate('nba', [{ pts: 25 }], 'PTS', 25, 'over')).toBe(1);
+    expect(hitRate('nba', [{ pts: 25 }], 'PTS', 25, 'under')).toBe(0);
   });
 
   it('returns null without logs or without a line', () => {
-    expect(hitRate([], 'PTS', 25.5)).toBeNull();
-    expect(hitRate(logs, 'PTS', null)).toBeNull();
+    expect(hitRate('nba', [], 'PTS', 25.5)).toBeNull();
+    expect(hitRate('nba', logs, 'PTS', null)).toBeNull();
   });
 });
 
 describe('avgFromLogs', () => {
   it('averages the market value across logs', () => {
-    expect(avgFromLogs([{ pts: 10 }, { pts: 20 }], 'PTS')).toBe(15);
+    expect(avgFromLogs('nba', [{ pts: 10 }, { pts: 20 }], 'PTS')).toBe(15);
   });
 
   it('returns null with no logs', () => {
-    expect(avgFromLogs([], 'PTS')).toBeNull();
+    expect(avgFromLogs('nba', [], 'PTS')).toBeNull();
   });
 });
 
@@ -218,13 +218,13 @@ describe('summarizeMarket', () => {
   ];
 
   it('picks the best over and under independently', () => {
-    const s = summarizeMarket(props, 'PTS');
+    const s = summarizeMarket('nba', props, 'PTS');
     expect(s.bestOver.bookmaker).toBe('fanduel'); // -105 is the best over
     expect(s.bestUnder.bookmaker).toBe('betmgm'); // -102 is the best under
   });
 
   it('uses the median as the consensus line', () => {
-    const s = summarizeMarket(
+    const s = summarizeMarket('nba', 
       [prop({ over_line: 25.5 }), prop({ bookmaker: 'fanduel', over_line: 26.5 }), prop({ bookmaker: 'betmgm', over_line: 26.5 })],
       'PTS'
     );
@@ -233,12 +233,12 @@ describe('summarizeMarket', () => {
 
   it('only considers rows matching the market key', () => {
     const mixed = [...props, { ...prop({}), market: 'player_rebounds', over_odds: 500 }];
-    expect(summarizeMarket(mixed, 'PTS').rows).toHaveLength(3);
+    expect(summarizeMarket('nba', mixed, 'PTS').rows).toHaveLength(3);
   });
 
   it('returns null for an unmodeled market or when nothing matches', () => {
-    expect(summarizeMarket(props, 'NOPE')).toBeNull();
-    expect(summarizeMarket([], 'PTS')).toBeNull();
+    expect(summarizeMarket('nba', props, 'NOPE')).toBeNull();
+    expect(summarizeMarket('nba', [], 'PTS')).toBeNull();
   });
 });
 
@@ -248,7 +248,7 @@ describe('computeEdges', () => {
       { ...prop({ bookmaker: 'draftkings', over_odds: -120 }), player_id: 1, player_name: 'A', game_id: 'g1' },
       { ...prop({ bookmaker: 'fanduel', over_odds: -105 }), player_id: 1, player_name: 'A', game_id: 'g1' },
     ];
-    const edges = computeEdges(rows);
+    const edges = computeEdges('nba', rows);
     expect(edges).toHaveLength(1);
     expect(edges[0].book).toBe('fanduel');
     expect(edges[0].odds).toBe(-105);
@@ -260,7 +260,7 @@ describe('computeEdges', () => {
       { ...prop({}), player_id: 1, player_name: 'A', game_id: 'g1' },
       { ...prop({}), player_id: 2, player_name: 'B', game_id: 'g1' },
     ];
-    expect(computeEdges(rows)).toHaveLength(2);
+    expect(computeEdges('nba', rows)).toHaveLength(2);
   });
 });
 

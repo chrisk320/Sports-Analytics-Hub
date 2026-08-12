@@ -1,19 +1,23 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { summarizeMarket, formatOdds, MARKETS } from '../../lib/odds';
+import { summarizeMarket, formatOdds } from '../../lib/odds';
+import { marketLabel, marketDef } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 import { Panel } from '../ui/panel';
 
 // Single markets first, then the combos (PR/PA/RA) set off by a divider.
-const SHOW = ['PTS', 'REB', 'AST', 'PR', 'PA', 'RA'];
-const COMBO_START = 'PR'; // first combo column — gets a left divider
 
 // Players for one team with their best over price per core market.
 // Rows navigate to the player detail page.
 export default function TeamPropsTable({ teamName, teamAbbr, players = [] }) {
+  const { sport, order, defaultMarket } = useSport();
+  // Divider before the first combo column, derived from the registry rather
+  // than a hardcoded 'PR' that only made sense for the NBA.
+  const comboStart = order.find((id) => marketDef(sport, id)?.group === 'combo');
   const navigate = useNavigate();
   // sort by points line desc so the headliners are on top
   const sorted = [...players].sort(
-    (a, b) => (summarizeMarket(b.props, 'PTS')?.line ?? 0) - (summarizeMarket(a.props, 'PTS')?.line ?? 0)
+    (a, b) => (summarizeMarket(sport, b.props, defaultMarket)?.line ?? 0) - (summarizeMarket(sport, a.props, defaultMarket)?.line ?? 0)
   );
 
   return (
@@ -31,12 +35,12 @@ export default function TeamPropsTable({ teamName, teamAbbr, players = [] }) {
             <thead>
               <tr className="text-[11px] uppercase text-slate-500">
                 <th className="px-4 py-2 text-left font-medium">Player</th>
-                {SHOW.map((m) => (
+                {order.map((m) => (
                   <th
                     key={m}
-                    className={`px-1.5 py-2 text-center font-medium ${m === COMBO_START ? 'border-l border-slate-800' : ''}`}
+                    className={`px-1.5 py-2 text-center font-medium ${m === comboStart ? 'border-l border-slate-800' : ''}`}
                   >
-                    {MARKETS[m].label}
+                    {marketLabel(sport, m)}
                   </th>
                 ))}
               </tr>
@@ -49,12 +53,12 @@ export default function TeamPropsTable({ teamName, teamAbbr, players = [] }) {
                   className={`border-t border-slate-800/70 ${pl.playerId ? 'cursor-pointer hover:bg-slate-800/40' : ''}`}
                 >
                   <td className="px-4 py-2 font-medium text-slate-100">{pl.playerName}</td>
-                  {SHOW.map((m) => {
-                    const s = summarizeMarket(pl.props, m);
+                  {order.map((m) => {
+                    const s = summarizeMarket(sport, pl.props, m);
                     return (
                       <td
                         key={m}
-                        className={`whitespace-nowrap px-1.5 py-2 text-center font-mono tabular-nums ${m === COMBO_START ? 'border-l border-slate-800/70' : ''}`}
+                        className={`whitespace-nowrap px-1.5 py-2 text-center font-mono tabular-nums ${m === comboStart ? 'border-l border-slate-800/70' : ''}`}
                       >
                         {s ? (
                           <>

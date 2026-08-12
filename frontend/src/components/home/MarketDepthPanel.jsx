@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MARKETS,
   summarizeMarket,
   americanToImpliedProb,
   formatOdds,
   bookLabel,
 } from '../../lib/odds';
 import { Panel } from '../ui/panel';
+import { marketLabel } from '../../lib/markets';
+import { useSport } from '@/context/SportContext';
 import { Term } from '../ui/term';
 
 function vig(over, under) {
@@ -18,7 +19,8 @@ function vig(over, under) {
 }
 
 export default function MarketDepthPanel({ player, props = [], marketId, nbaGames = [], onAddToSlip, hasWatchlist = true }) {
-  const summary = summarizeMarket(props, marketId);
+  const { sport } = useSport();
+  const summary = summarizeMarket(sport, props, marketId);
   const rows = summary?.rows || [];
   const bestOverBook = summary?.bestOver?.bookmaker;
   const bestUnderBook = summary?.bestUnder?.bookmaker;
@@ -30,7 +32,7 @@ export default function MarketDepthPanel({ player, props = [], marketId, nbaGame
           <div>
             <h3 className="font-bold text-slate-50">{player ? player.full_name : 'Market depth'}</h3>
             <p className="text-xs text-slate-500">
-              {MARKETS[marketId]?.label} {summary?.line != null ? `· line ${summary.line}` : ''}
+              {marketLabel(sport, marketId)} {summary?.line != null ? `· line ${summary.line}` : ''}
             </p>
           </div>
           {summary?.bestOver && (

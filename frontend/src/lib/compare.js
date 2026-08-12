@@ -7,8 +7,6 @@
 // price. Books on an alternate line are still shown, just flagged + excluded
 // from the best-price math.
 import {
-  MARKETS,
-  MARKET_ORDER,
   median,
   bestOdds,
   savingsPer100,
@@ -16,9 +14,20 @@ import {
   decimalToAmerican,
   evPercent,
 } from './odds';
+import { marketsFor, marketLabel } from './markets';
 
-// market key (e.g. 'player_points') -> marketId ('PTS')
-const KEY_TO_ID = Object.fromEntries(MARKET_ORDER.map((id) => [MARKETS[id].key, id]));
+// market key (e.g. 'player_points') -> marketId ('PTS'), per sport.
+// Built lazily and memoized: this used to be a module-level const derived from
+// the NBA-only registry, which meant the mapping was baked in at import time
+// and could never vary by sport.
+const keyToIdCache = new Map();
+function keyToId(sport) {
+  if (!keyToIdCache.has(sport)) {
+    const { order, markets } = marketsFor(sport);
+    keyToIdCache.set(sport, Object.fromEntries(order.map((id) => [markets[id].key, id])));
+  }
+  return keyToIdCache.get(sport);
+}
 
 const MIN_DEVIG_BOOKS = 2; // need at least this many two-way books to estimate fair
 
@@ -55,13 +64,14 @@ function fairOverProb(perBook) {
   return median(fairs);
 }
 
-export function buildCompareRows(props, books) {
+export function buildCompareRows(sport, props, books) {
   const bookSet = new Set(books);
+  const byKey = keyToId(sport);
   const groups = new Map();
 
   for (const r of props || []) {
     if (!bookSet.has(r.bookmaker)) continue;
-    const marketId = KEY_TO_ID[r.market];
+    const marketId = byKey[r.market];
     if (!marketId) continue; // ignore markets we don't model
     const playerKey = r.player_id ?? r.player_name;
     const key = `${playerKey}|${r.game_id}|${marketId}`;
@@ -110,7 +120,7 @@ export function buildCompareRows(props, books) {
       homeTeam: g.homeTeam,
       awayTeam: g.awayTeam,
       marketId: g.marketId,
-      marketLabel: MARKETS[g.marketId].label,
+      marketLabel: marketLabel(sport, g.marketId),
       line,
       prices: g.byBook, // book -> { over, under, overLine }
       bestBook: bestEntry?.book ?? null,

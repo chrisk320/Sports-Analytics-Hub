@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { computeEdges } from '../lib/odds';
+import { useSport } from '@/context/SportContext';
 import SearchBar from '../components/SearchBar';
 import MarketToggle from '../components/home/MarketToggle';
 import LiveTicker from '../components/home/LiveTicker';
@@ -36,6 +37,8 @@ export default function HomePage() {
     removeFromSlip,
     clearSlip,
   } = useOutletContext();
+
+  const { sport } = useSport();
 
   const isOffseason = seasonStatus && !seasonStatus.nbaInSeason;
 
@@ -107,7 +110,7 @@ export default function HomePage() {
     return m;
   }, [todaysProps]);
 
-  const edges = useMemo(() => computeEdges(todaysProps), [todaysProps]);
+  const edges = useMemo(() => computeEdges(sport, todaysProps), [sport, todaysProps]);
 
   const activePlayerId = useMemo(() => {
     if (hoveredPlayerId) return hoveredPlayerId;

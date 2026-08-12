@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Loader, Search } from 'lucide-react';
 import { api } from '../lib/api';
-import { formatOdds, bookLabel, MARKET_ORDER, DEFAULT_BOOKS } from '../lib/odds';
+import { formatOdds, bookLabel, DEFAULT_BOOKS } from '../lib/odds';
+import { useSport } from '@/context/SportContext';
 import { buildCompareRows, sortRows, bestBookToday, avgSavings, evCount } from '../lib/compare';
 import MarketToggle from '../components/home/MarketToggle';
 import OffseasonBanner from '../components/OffseasonBanner';
@@ -119,6 +120,7 @@ function CompareRow({ row, books, onAdd, inSlip }) {
 
 export default function ComparePage() {
   const { selectedBooks, setSelectedBooks, addToSlip, isInSlip, seasonStatus } = useOutletContext();
+  const { sport, order } = useSport();
 
   const [props, setProps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,7 +158,7 @@ export default function ComparePage() {
   // Stable column order regardless of toggle order.
   const orderedBooks = useMemo(() => DEFAULT_BOOKS.filter((b) => books.includes(b)), [books]);
 
-  const allRows = useMemo(() => buildCompareRows(props, books), [props, books]);
+  const allRows = useMemo(() => buildCompareRows(sport, props, books), [sport, props, books]);
 
   const filtered = useMemo(() => {
     let r = allRows;
@@ -217,7 +219,7 @@ export default function ComparePage() {
 
       {/* Filters */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <MarketToggle value={marketFilter} onChange={setMarketFilter} options={['ALL', ...MARKET_ORDER]} />
+        <MarketToggle value={marketFilter} onChange={setMarketFilter} options={['ALL', ...order]} />
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
