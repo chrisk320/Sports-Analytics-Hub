@@ -140,7 +140,7 @@ def flush_logs(cur, batch):
         cur.executemany(INSERT_LOG_SQL, batch)
 
 
-def run(season, week=None):
+def run(season, week=None, replace=False):
     season_str = season_string(season)
     print("=" * 60)
     print(f"NFL stats from nflverse — season {season}" + (f", week {week}" if week else ""))
@@ -170,6 +170,19 @@ def run(season, week=None):
         with conn.cursor() as cur:
             cur.execute("SELECT current_database()")
             print(f"Connected to {cur.fetchone()[0]}\n")
+
+            if replace:
+                # Inside the same transaction as the inserts below, and only
+                # after the source data is in hand. The loader upserts, so it
+                # can correct a row it still emits but never remove one it has
+                # stopped emitting -- changing which players qualify needs a
+                # delete. Doing that here rather than in a separate step means
+                # a download failure aborts before anything is removed, instead
+                # of leaving the table empty.
+                cur.execute("DELETE FROM player_game_logs WHERE sport = 'nfl'")
+                logs_gone = cur.rowcount
+                cur.execute("DELETE FROM players WHERE sport = 'nfl'")
+                print(f"Replacing: removed {logs_gone:,} logs / {cur.rowcount:,} players\n")
 
             # Players first. One row per DISTINCT player (~2k for a season),
             # not per player-week, so this stays a manageable number of trips.
@@ -209,12 +222,17 @@ def run(season, week=None):
 if __name__ == "__main__":
     args = sys.argv[1:]
     season, week = None, None
+    replace = "--replace" in args
     for i, a in enumerate(args):
         if a == "--season" and i + 1 < len(args):
             season = int(args[i + 1])
         if a == "--week" and i + 1 < len(args):
             week = int(args[i + 1])
     if not season:
-        print("Usage: python fetch_nfl_stats.py --season YYYY [--week N]")
+        print("Usage: python fetch_nfl_stats.py --season YYYY [--week N] [--replace]")
+        print("  --replace  drop existing NFL rows and reload, atomically")
         sys.exit(1)
-    run(season, week)
+    if replace and week:
+        print("--replace clears the whole sport, so pair it with --season, not --week.")
+        sys.exit(1)
+    run(season, week, replace=replace)

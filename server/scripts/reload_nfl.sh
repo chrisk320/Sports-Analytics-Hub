@@ -52,16 +52,14 @@ psql "$psql_url" -c "
          (SELECT count(*) FROM player_game_logs g WHERE g.sport = p.sport) AS logs
   FROM players p GROUP BY p.sport ORDER BY p.sport;"
 
-read -r -p "Delete ALL sport='nfl' rows from \$${DB_VAR} and reload season $SEASON? [y/N] " ok
+read -r -p "Replace ALL sport='nfl' rows in \$${DB_VAR} with season $SEASON? [y/N] " ok
 [[ "$ok" == "y" || "$ok" == "Y" ]] || { echo "Aborted."; exit 1; }
 
-# Logs first: player_game_logs.player_id references players.
-psql "$psql_url" -v ON_ERROR_STOP=1 -c "
-  BEGIN;
-  DELETE FROM player_game_logs WHERE sport = 'nfl';
-  DELETE FROM players          WHERE sport = 'nfl';
-  COMMIT;"
-
+# The delete lives inside the loader's own transaction (--replace), not here.
+# An earlier version deleted first and then shelled out to the loader, so a
+# failed download left the table empty with no way back except another run.
+# Now the download happens first and the delete+insert commit together: either
+# the swap lands whole or the old rows are still there.
 echo
 echo "Reloading season $SEASON..."
 cd python_scripts
@@ -71,7 +69,7 @@ source venv/bin/activate
 # delete and the reload would target different databases whenever DB_VAR is not
 # DATABASE_URL. python-dotenv does not override variables already in the
 # environment, so this wins over the .env entry.
-DATABASE_URL="$psql_url" python fetch_nfl_stats.py --season "$SEASON"
+DATABASE_URL="$psql_url" python fetch_nfl_stats.py --season "$SEASON" --replace
 cd ..
 
 echo
