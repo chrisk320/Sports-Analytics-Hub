@@ -87,6 +87,11 @@ export default function ExplorePage() {
   const [stat, setStat] = useState(STATS[0]?.id);
 
   const [rows, setRows] = useState([]);
+  // Whether this stat is a season total or a per-game rate is the server's
+  // call -- it owns the SQL. Reading it back off the rows keeps the heading
+  // honest instead of duplicating the aggregation table on the client.
+  const aggSuffix = rows[0]?.agg === 'total' ? '' : ' per game';
+
   const [loading, setLoading] = useState(true);
   const [recap, setRecap] = useState({});
 
@@ -200,7 +205,7 @@ export default function ExplorePage() {
                     {r.headshot_url && <img src={r.headshot_url} alt="" className="h-10 w-10 rounded-full bg-slate-800 object-cover" />}
                     <div>
                       <div className="font-semibold text-slate-100">{r.full_name}</div>
-                      <div className="font-mono text-sm text-amber-300">{r.value} per game</div>
+                      <div className="font-mono text-sm text-amber-300">{r.value}{r.agg === 'total' ? '' : ' per game'}</div>
                     </div>
                   </Link>
                 ) : (
@@ -215,7 +220,7 @@ export default function ExplorePage() {
       {/* Leaderboard */}
       <div className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="text-lg font-semibold">Leaderboard — {statLabel.label} per game</h2>
+          <h2 className="text-lg font-semibold">Leaderboard — {statLabel.label}{aggSuffix}</h2>
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={season}

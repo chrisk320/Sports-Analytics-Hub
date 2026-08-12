@@ -165,6 +165,13 @@ export const getSeasons = async (req, res) => {
 // explicit zeros, but the query should not depend on that.
 const jsonAvg = (key) => `AVG(COALESCE((pgl.stats->>'${key}')::numeric, 0))`;
 
+// Season total rather than a per-game rate. Baseball counting stats are always
+// discussed as totals -- "35 home runs", never "0.3 home runs per game", which
+// is both unidiomatic and useless at one decimal place because it compresses
+// every slugger in the league onto the same number. Basketball and football
+// are the opposite convention, so this is per-stat rather than per-sport.
+const jsonSum = (key) => `SUM(COALESCE((pgl.stats->>'${key}')::numeric, 0))`;
+
 const LEADERBOARD_STATS_BY_SPORT = {
     nba: {
         pts: 'AVG(pgl.pts)',
@@ -190,12 +197,12 @@ const LEADERBOARD_STATS_BY_SPORT = {
     // 180 strikeouts would top the strikeout leaderboard ahead of every
     // pitcher in baseball.
     mlb: {
-        hits:        { expr: jsonAvg('hits'),          role: 'batter' },
-        home_runs:   { expr: jsonAvg('home_runs'),     role: 'batter' },
-        total_bases: { expr: jsonAvg('total_bases'),   role: 'batter' },
-        rbi:         { expr: jsonAvg('rbi'),           role: 'batter' },
-        strikeouts:  { expr: jsonAvg('strike_outs'),   role: 'pitcher' },
-        earned_runs: { expr: jsonAvg('earned_runs'),   role: 'pitcher' },
+        hits:        { expr: jsonSum('hits'),        role: 'batter',  agg: 'total' },
+        home_runs:   { expr: jsonSum('home_runs'),   role: 'batter',  agg: 'total' },
+        total_bases: { expr: jsonSum('total_bases'), role: 'batter',  agg: 'total' },
+        rbi:         { expr: jsonSum('rbi'),         role: 'batter',  agg: 'total' },
+        strikeouts:  { expr: jsonSum('strike_outs'), role: 'pitcher', agg: 'total' },
+        earned_runs: { expr: jsonSum('earned_runs'), role: 'pitcher', agg: 'total' },
     },
 };
 
@@ -204,7 +211,9 @@ const LEADERBOARD_STATS_BY_SPORT = {
 const statConfig = (allowed, stat) => {
     const entry = allowed[stat];
     if (!entry) return null;
-    return typeof entry === 'string' ? { expr: entry, role: null } : entry;
+    return typeof entry === 'string'
+        ? { expr: entry, role: null, agg: 'per_game' }
+        : { role: null, agg: 'per_game', ...entry };
 };
 
 // Minimum games to appear on a leaderboard. Sport-specific because 20 games is
@@ -262,7 +271,12 @@ export const getLeaderboard = async (req, res) => {
                 p.headshot_url,
                 MAX(pgl.season)                          AS season,
                 COUNT(*)::int                            AS games_played,
-                ROUND(${statExpr}::numeric, 1)::float    AS value
+                -- Totals are whole numbers (35 home runs, not 35.0); rates
+                -- keep one decimal. The agg marker travels with the rows so the
+                -- client labels them correctly without keeping its own copy of
+                -- this table in step.
+                ROUND(${statExpr}::numeric, ${cfg.agg === 'total' ? 0 : 1})::float AS value,
+                '${cfg.agg}'                             AS agg
             FROM player_game_logs pgl
             JOIN players p ON p.player_id = pgl.player_id
             LEFT JOIN advanced_box_scores abs ON abs.game_log_id = pgl.game_log_id
