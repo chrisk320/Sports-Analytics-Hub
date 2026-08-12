@@ -27,7 +27,17 @@ const STATS_BY_SPORT = {
     { id: 'rec_yds', label: 'Rec Yards', unit: '' },
     { id: 'ppr', label: 'Fantasy (PPR)', unit: '' },
   ],
-  mlb: [],
+  // Batting and pitching are separate populations, so these leaderboards are
+  // role-scoped server-side. Without that a hitter's 180 strikeouts would
+  // outrank every pitcher on the strikeout board.
+  mlb: [
+    { id: 'hits', label: 'Hits', unit: '' },
+    { id: 'home_runs', label: 'Home Runs', unit: '' },
+    { id: 'total_bases', label: 'Total Bases', unit: '' },
+    { id: 'rbi', label: 'RBI', unit: '' },
+    { id: 'strikeouts', label: 'Strikeouts (P)', unit: '' },
+    { id: 'earned_runs', label: 'Earned Runs (P)', unit: '' },
+  ],
 };
 
 const RECAP_BY_SPORT = {
@@ -41,7 +51,11 @@ const RECAP_BY_SPORT = {
     { id: 'rush_yds', label: 'Rushing leader' },
     { id: 'rec_yds', label: 'Receiving leader' },
   ],
-  mlb: [],
+  mlb: [
+    { id: 'hits', label: 'Hits leader' },
+    { id: 'home_runs', label: 'Home run leader' },
+    { id: 'strikeouts', label: 'Strikeout leader' },
+  ],
 };
 
 const segCls = (on) =>

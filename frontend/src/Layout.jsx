@@ -259,8 +259,22 @@ export default function Layout() {
 
       <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
-      <footer className="text-center text-slate-500 py-8 mt-auto">
+      {/* Data attribution. MLB's terms require credit and restrict use to
+          non-commercial; nflverse is CC BY 4.0, which also requires it. This is
+          a licence obligation, not decoration -- leave it visible. */}
+      <footer className="mt-auto space-y-2 py-8 text-center text-slate-500">
         <p>Sports Analytics Hub</p>
+        <p className="mx-auto max-w-3xl px-4 text-xs leading-relaxed text-slate-600">
+          NBA stats via{' '}
+          <a href="https://www.basketball-reference.com" target="_blank" rel="noreferrer noopener"
+             className="hover:text-slate-400">Basketball Reference</a>. NFL stats via{' '}
+          <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noreferrer noopener"
+             className="hover:text-slate-400">nflverse</a> (CC BY 4.0). MLB data courtesy of{' '}
+          <a href="http://gdx.mlb.com/components/copyright.txt" target="_blank" rel="noreferrer noopener"
+             className="hover:text-slate-400">MLB Advanced Media</a> — non-commercial use only.
+          Odds via The Odds API and Kalshi. Not affiliated with any league. For
+          informational purposes only; not betting advice.
+        </p>
       </footer>
     </div>
     </SportProvider>

@@ -106,7 +106,12 @@ def upsert_player(cur, row):
 
 def log_params(player_id, row, game_date, game_ref, season_str):
     """Build the parameter tuple for one player-week."""
-    stats = {c: (float(row[c]) if row[c] % 1 else int(row[c])) for c in STAT_COLUMNS if row[c]}
+    # Store zeros. Skipping them looks like a harmless size optimization and is
+    # not: a missing key reads as "no data" rather than "zero", so every
+    # average and hit rate silently drops those games from its denominator. A
+    # receiver with 13 quiet games out of 15 was showing 40.0 yards per game
+    # instead of 5.3, and a prop hit rate of "8 of 10" was really 8 of 17.
+    stats = {c: (float(row[c]) if row[c] % 1 else int(row[c])) for c in STAT_COLUMNS}
     stats["week"] = int(row["week"])
     return (
         player_id,

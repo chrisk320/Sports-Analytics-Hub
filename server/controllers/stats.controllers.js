@@ -156,6 +156,15 @@ export const getSeasons = async (req, res) => {
 // NBA still reads its legacy columns (which remain authoritative until the
 // contract migration drops them); NFL reads the JSONB blob. Same shape, so the
 // query below is identical for both.
+// Average a stat out of the JSONB blob, treating an absent key as zero.
+//
+// Without the COALESCE, AVG skips rows where the key is missing while
+// games_played still counts them, so the two columns disagree: a receiver with
+// two productive games out of fifteen was ranked on a 40.0 average next to a
+// games_played of 15, when his real per-game figure was 5.3. Loaders now store
+// explicit zeros, but the query should not depend on that.
+const jsonAvg = (key) => `AVG(COALESCE((pgl.stats->>'${key}')::numeric, 0))`;
+
 const LEADERBOARD_STATS_BY_SPORT = {
     nba: {
         pts: 'AVG(pgl.pts)',
@@ -167,14 +176,35 @@ const LEADERBOARD_STATS_BY_SPORT = {
         usage: 'AVG(abs.usage_percentage)',
     },
     nfl: {
-        pass_yds: "AVG((pgl.stats->>'passing_yards')::numeric)",
-        pass_tds: "AVG((pgl.stats->>'passing_tds')::numeric)",
-        rush_yds: "AVG((pgl.stats->>'rushing_yards')::numeric)",
-        rec: "AVG((pgl.stats->>'receptions')::numeric)",
-        rec_yds: "AVG((pgl.stats->>'receiving_yards')::numeric)",
-        ppr: "AVG((pgl.stats->>'fantasy_points_ppr')::numeric)",
+        pass_yds: jsonAvg('passing_yards'),
+        pass_tds: jsonAvg('passing_tds'),
+        rush_yds: jsonAvg('rushing_yards'),
+        rec: jsonAvg('receptions'),
+        rec_yds: jsonAvg('receiving_yards'),
+        ppr: jsonAvg('fantasy_points_ppr'),
     },
-    mlb: {},
+    // Baseball splits into two populations that share stat NAMES but not
+    // meaning: `strike_outs` on a batter row is times struck out, on a pitcher
+    // row it is strikeouts thrown. Each entry therefore carries the role its
+    // stat belongs to, and the query filters on it -- otherwise a hitter with
+    // 180 strikeouts would top the strikeout leaderboard ahead of every
+    // pitcher in baseball.
+    mlb: {
+        hits:        { expr: jsonAvg('hits'),          role: 'batter' },
+        home_runs:   { expr: jsonAvg('home_runs'),     role: 'batter' },
+        total_bases: { expr: jsonAvg('total_bases'),   role: 'batter' },
+        rbi:         { expr: jsonAvg('rbi'),           role: 'batter' },
+        strikeouts:  { expr: jsonAvg('strike_outs'),   role: 'pitcher' },
+        earned_runs: { expr: jsonAvg('earned_runs'),   role: 'pitcher' },
+    },
+};
+
+// Entries are either a bare SQL expression or {expr, role}. Normalizing here
+// keeps the three sports' shapes from leaking into the query builder.
+const statConfig = (allowed, stat) => {
+    const entry = allowed[stat];
+    if (!entry) return null;
+    return typeof entry === 'string' ? { expr: entry, role: null } : entry;
 };
 
 // Minimum games to appear on a leaderboard. Sport-specific because 20 games is
@@ -189,10 +219,11 @@ export const getLeaderboard = async (req, res) => {
     const { season, stat = Object.keys(allowed)[0] } = req.query;
     const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
     const minGames = MIN_GAMES_BY_SPORT[sport] ?? 20;
-    const statExpr = allowed[stat];
+    const cfg = statConfig(allowed, stat);
+    const statExpr = cfg?.expr;
     console.log(`Received leaderboard request: sport=${sport} season=${season || 'latest'} stat=${stat}`);
 
-    if (!statExpr) {
+    if (!cfg) {
         return res.status(400).json({
             error: Object.keys(allowed).length
                 ? `Invalid stat '${stat}' for ${sport}. Allowed: ${Object.keys(allowed).join(', ')}`
@@ -212,6 +243,13 @@ export const getLeaderboard = async (req, res) => {
             // (NBA) and '2024' (NFL), so a global MAX would be meaningless.
             seasonFilter = `pgl.season = (SELECT MAX(season) FROM player_game_logs WHERE sport = ${sportParam})`;
         }
+        // Scope to one role where the sport defines them, so batting and
+        // pitching leaderboards do not average across both populations.
+        let roleFilter = '';
+        if (cfg.role) {
+            params.push(cfg.role);
+            roleFilter = ` AND pgl.role = $${params.length}`;
+        }
         params.push(minGames);
         const minGamesParam = `$${params.length}`;
         params.push(limit);
@@ -228,7 +266,7 @@ export const getLeaderboard = async (req, res) => {
             FROM player_game_logs pgl
             JOIN players p ON p.player_id = pgl.player_id
             LEFT JOIN advanced_box_scores abs ON abs.game_log_id = pgl.game_log_id
-            WHERE pgl.sport = ${sportParam} AND ${seasonFilter}
+            WHERE pgl.sport = ${sportParam} AND ${seasonFilter}${roleFilter}
             GROUP BY pgl.player_id, p.full_name, p.headshot_url
             HAVING COUNT(*) >= ${minGamesParam} AND ${statExpr} IS NOT NULL
             ORDER BY value DESC NULLS LAST

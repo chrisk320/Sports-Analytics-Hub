@@ -180,7 +180,46 @@ python fetch_bref_backfill.py --start 2026-04-13 --end 2026-06-02
 
 # Props (needs ODDS_API_KEY)
 python fetch_player_props.py
+
+# NFL — nflverse Parquet, one season at a time
+python fetch_nfl_stats.py --season 2024
+
+# MLB — statsapi.mlb.com, a season or an explicit range
+python fetch_mlb_stats.py --season 2026
+python fetch_mlb_stats.py --start 2026-08-01 --end 2026-08-10
 ```
+
+Both non-NBA loaders accept `--replace`, which clears that sport and reloads
+inside a single transaction. Use it when the *selection* logic changes rather
+than the values: the loaders upsert, so they can correct a row they still emit
+but never remove one they have stopped emitting.
+
+`./server/scripts/reload_nfl.sh <season> <ENV_VAR>` wraps the NFL case and
+requires the target database to be named explicitly — `server/.env` holds both
+a production and a test-branch URL, and defaulting to either is how you reload
+the wrong one.
+
+**Where each pipeline can run.** The Basketball Reference scraper 403s from
+datacenter IPs, so it stays on a local cron with a residential IP. nflverse is
+static Parquet on GitHub Releases and `statsapi.mlb.com` is a public JSON API —
+both accept datacenter IPs, so the NFL and MLB loaders can be cloud-scheduled.
+
+## Data Sources & Attribution
+
+| Sport | Source | Terms |
+|---|---|---|
+| NBA | [Basketball Reference](https://www.basketball-reference.com) | Scraped; local cron only |
+| NFL | [nflverse](https://github.com/nflverse/nflverse-data) | CC BY 4.0 — attribution required |
+| MLB | [MLB Stats API](https://statsapi.mlb.com) | [MLBAM copyright](http://gdx.mlb.com/components/copyright.txt) — attribution required, **non-commercial use only** |
+| Odds | [The Odds API](https://the-odds-api.com), [Kalshi](https://kalshi.com) | Metered / public API |
+
+The MLB and nflverse licences both require visible credit, which is why the app
+footer carries it. `MLB-StatsAPI` (the PyPI package) is deliberately **not** a
+dependency: it is GPL-3.0, and its copyleft terms are a poor fit for a public
+portfolio repo. The two endpoints this project needs are read directly instead.
+
+This project is not affiliated with the NBA, NFL, or MLB, and nothing it
+produces is betting advice.
 
 ## Environment Variables
 
