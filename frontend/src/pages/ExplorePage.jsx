@@ -35,8 +35,8 @@ const STATS_BY_SPORT = {
     { id: 'home_runs', label: 'Home Runs', unit: '' },
     { id: 'total_bases', label: 'Total Bases', unit: '' },
     { id: 'rbi', label: 'RBI', unit: '' },
-    { id: 'strikeouts', label: 'Strikeouts (P)', unit: '' },
-    { id: 'earned_runs', label: 'Earned Runs (P)', unit: '' },
+    { id: 'strikeouts', label: 'Strikeouts Thrown', unit: '' },
+    { id: 'earned_runs', label: 'Earned Runs Allowed', unit: '' },
   ],
 };
 
@@ -54,7 +54,7 @@ const RECAP_BY_SPORT = {
   mlb: [
     { id: 'hits', label: 'Hits leader' },
     { id: 'home_runs', label: 'Home run leader' },
-    { id: 'strikeouts', label: 'Strikeout leader' },
+    { id: 'strikeouts', label: 'Strikeouts (pitching)' },
   ],
 };
 

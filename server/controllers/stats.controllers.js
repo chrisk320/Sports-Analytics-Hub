@@ -269,7 +269,11 @@ export const getLeaderboard = async (req, res) => {
             WHERE pgl.sport = ${sportParam} AND ${seasonFilter}${roleFilter}
             GROUP BY pgl.player_id, p.full_name, p.headshot_url
             HAVING COUNT(*) >= ${minGamesParam} AND ${statExpr} IS NOT NULL
-            ORDER BY value DESC NULLS LAST
+            -- Order on the UNROUNDED average, with a deterministic tie-break.
+            -- Ordering by the rounded column let two players who both display
+            -- 1.3 come back in arbitrary order, so the recap card and the
+            -- leaderboard below it disagreed about who led the league.
+            ORDER BY ${statExpr} DESC NULLS LAST, COUNT(*) DESC, p.full_name ASC
             LIMIT ${limitParam};
         `;
         const result = await pool.query(query, params);

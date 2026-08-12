@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { User, Star, Loader, ChevronLeft } from 'lucide-react';
 import { api } from '../lib/api';
-import { summarizeMarket, avgFromLogs } from '../lib/odds';
-import { marketLabel, marketsForRole, defaultMarketFor } from '../lib/markets';
+import { summarizeMarket, avgFromLogs, statFromLog } from '../lib/odds';
+import { marketLabel, marketsForRole, defaultMarketFor, marketOrder } from '../lib/markets';
 import { useSport } from '@/context/SportContext';
 import RecentGamesBarChart from '../components/RecentGamesBarChart';
 import MarketToggle from '../components/home/MarketToggle';
@@ -58,11 +58,33 @@ export default function PlayerDetailPage() {
   );
   const player = playerFromList || fetchedPlayer;
 
-  // Football positions have disjoint stat sets: a tight end never throws, so
-  // offering (and defaulting to) PASS YDS renders an empty chart. Narrow both
-  // the toggle and the selected market to what this player's role produces.
-  const role = player?.position;
-  const roleMarkets = useMemo(() => marketsForRole(sport, role), [sport, role]);
+  // Positions have disjoint stat sets: a tight end never throws and a pitcher
+  // rarely bats, so offering (and defaulting to) the wrong market renders an
+  // empty chart. Narrow the toggle and the selected market to what this player
+  // actually produces.
+  //
+  // The role comes from the game logs rather than from `position`. In football
+  // the two agree, but in baseball they do not -- position is 'SS' or 'P'
+  // while the market registry is keyed on 'batter' / 'pitcher'. Reading the
+  // logs also handles a two-way player correctly: someone who both bats and
+  // pitches has rows under both roles and gets the union of the two market
+  // sets, rather than being forced into one.
+  const rolesInLogs = useMemo(() => {
+    const counts = new Map();
+    for (const l of logs) {
+      if (l.role) counts.set(l.role, (counts.get(l.role) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([r]) => r);
+  }, [logs]);
+
+  // Fall back to position for sports whose logs carry no role (NBA writes '').
+  const role = rolesInLogs[0] ?? player?.position;
+  const roleMarkets = useMemo(() => {
+    if (!rolesInLogs.length) return marketsForRole(sport, player?.position);
+    const ids = new Set();
+    for (const r of rolesInLogs) marketsForRole(sport, r).forEach((id) => ids.add(id));
+    return marketOrder(sport).filter((id) => ids.has(id));
+  }, [sport, rolesInLogs, player?.position]);
   useEffect(() => {
     if (roleMarkets.length && !roleMarkets.includes(chartMarket)) {
       setChartMarket(defaultMarketFor(sport, role));
@@ -318,19 +340,30 @@ export default function PlayerDetailPage() {
                   <tr className="text-left text-[11px] uppercase text-slate-500">
                     <th className="px-3 py-2 font-medium">Date</th>
                     <th className="px-3 py-2 font-medium">Opp</th>
-                    <th className="px-3 py-2 text-right font-medium">MIN</th>
-                    <th className="px-3 py-2 text-right font-medium">PTS</th>
-                    <th className="px-3 py-2 text-right font-medium">REB</th>
-                    <th className="px-3 py-2 text-right font-medium">AST</th>
-                    <th className="px-3 py-2 text-right font-medium">STL</th>
-                    <th className="px-3 py-2 text-right font-medium">USG%</th>
-                    <th className="px-3 py-2 text-right font-medium">TS%</th>
-                    <th className="px-3 py-2 text-right font-medium">
-                      <span title={RATING_NOTE} className="cursor-help underline decoration-dotted decoration-slate-600 underline-offset-2">ORtg</span>
-                    </th>
-                    <th className="px-3 py-2 text-right font-medium">
-                      <span title={RATING_NOTE} className="cursor-help underline decoration-dotted decoration-slate-600 underline-offset-2">DRtg</span>
-                    </th>
+                    {sport === 'nba' ? (
+                      <>
+                        <th className="px-3 py-2 text-right font-medium">MIN</th>
+                        <th className="px-3 py-2 text-right font-medium">PTS</th>
+                        <th className="px-3 py-2 text-right font-medium">REB</th>
+                        <th className="px-3 py-2 text-right font-medium">AST</th>
+                        <th className="px-3 py-2 text-right font-medium">STL</th>
+                        <th className="px-3 py-2 text-right font-medium">USG%</th>
+                        <th className="px-3 py-2 text-right font-medium">TS%</th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          <span title={RATING_NOTE} className="cursor-help underline decoration-dotted decoration-slate-600 underline-offset-2">ORtg</span>
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          <span title={RATING_NOTE} className="cursor-help underline decoration-dotted decoration-slate-600 underline-offset-2">DRtg</span>
+                        </th>
+                      </>
+                    ) : (
+                      // Outside basketball the advanced-metric columns do not
+                      // exist, so the table follows the same market registry
+                      // that drives the chart and the toggle.
+                      roleMarkets.map((id) => (
+                        <th key={id} className="px-3 py-2 text-right font-medium">{marketLabel(sport, id)}</th>
+                      ))
+                    )}
                   </tr>
                 </thead>
                 <tbody className="font-mono tabular-nums">
@@ -340,15 +373,25 @@ export default function PlayerDetailPage() {
                         {new Date(log.game_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}
                       </td>
                       <td className="px-3 py-2 font-sans text-slate-300">{log.opponent}</td>
-                      <td className="px-3 py-2 text-right text-slate-400">{log.min}</td>
-                      <td className="px-3 py-2 text-right font-bold text-slate-50">{log.pts}</td>
-                      <td className="px-3 py-2 text-right text-slate-200">{log.reb}</td>
-                      <td className="px-3 py-2 text-right text-slate-200">{log.ast}</td>
-                      <td className="px-3 py-2 text-right text-slate-200">{log.stl}</td>
-                      <td className="px-3 py-2 text-right text-slate-400">{log.usage_percentage ?? '—'}</td>
-                      <td className="px-3 py-2 text-right text-slate-400">{log.true_shooting_percentage ?? '—'}</td>
-                      <td className="px-3 py-2 text-right text-slate-400">{log.offensive_rating ?? '—'}</td>
-                      <td className="px-3 py-2 text-right text-slate-400">{log.defensive_rating ?? '—'}</td>
+                      {sport === 'nba' ? (
+                        <>
+                          <td className="px-3 py-2 text-right text-slate-400">{log.min}</td>
+                          <td className="px-3 py-2 text-right font-bold text-slate-50">{log.pts}</td>
+                          <td className="px-3 py-2 text-right text-slate-200">{log.reb}</td>
+                          <td className="px-3 py-2 text-right text-slate-200">{log.ast}</td>
+                          <td className="px-3 py-2 text-right text-slate-200">{log.stl}</td>
+                          <td className="px-3 py-2 text-right text-slate-400">{log.usage_percentage ?? '\u2014'}</td>
+                          <td className="px-3 py-2 text-right text-slate-400">{log.true_shooting_percentage ?? '\u2014'}</td>
+                          <td className="px-3 py-2 text-right text-slate-400">{log.offensive_rating ?? '\u2014'}</td>
+                          <td className="px-3 py-2 text-right text-slate-400">{log.defensive_rating ?? '\u2014'}</td>
+                        </>
+                      ) : (
+                        roleMarkets.map((id, i) => (
+                          <td key={id} className={`px-3 py-2 text-right ${i === 0 ? 'font-bold text-slate-50' : 'text-slate-200'}`}>
+                            {statFromLog(sport, log, id) ?? '\u2014'}
+                          </td>
+                        ))
+                      )}
                     </tr>
                   ))}
                 </tbody>
