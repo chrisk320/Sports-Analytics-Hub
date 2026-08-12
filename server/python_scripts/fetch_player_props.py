@@ -26,6 +26,11 @@ from dotenv import load_dotenv
 # midnight UTC, so dating it by the UTC day would push it to "tomorrow".
 EASTERN = ZoneInfo("America/New_York")
 
+# This loader is NBA-only (the endpoints below are basketball_nba). Naming it
+# rather than leaving it implicit is what lets the player lookup scope itself
+# to one sport now that three leagues share the players table.
+SPORT = "nba"
+
 # Markets to fetch
 MARKETS = [
     'player_points',
@@ -104,42 +109,93 @@ def fetch_props_for_event(api_key, event_id):
     return response.json()
 
 
-def link_player_name_to_id(conn, player_name):
-    """Try to match player name to player_id in database."""
+def link_player_name_to_id(conn, player_name, sport=SPORT):
+    """Match a prop's player name to a player_id WITHIN one sport.
+
+    The sport filter is load-bearing now that players from three leagues share
+    the table. "Spencer Jones" is both an NBA and an MLB player and "Tyler
+    Smith" is both NBA and NFL, so an unscoped LIMIT 1 can attach an NBA prop
+    to a baseball player_id -- which then reads that player's game logs and
+    produces a confidently wrong hit rate.
+
+    Returns None on an ambiguous match rather than guessing. A prop with a null
+    player_id is merely unlinked; one linked to the wrong player is wrong.
+    """
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT player_id FROM players WHERE LOWER(full_name) = LOWER(%s) LIMIT 1",
-            (player_name,)
+            "SELECT player_id FROM players WHERE sport = %s AND LOWER(full_name) = LOWER(%s)",
+            (sport, player_name),
         )
-        row = cur.fetchone()
-        return row[0] if row else None
+        rows = cur.fetchall()
+        if len(rows) == 1:
+            return rows[0][0]
+        if len(rows) > 1:
+            print(f"  ! ambiguous name within {sport}: {player_name} -> {len(rows)} players; leaving unlinked")
+        return None
 
 
-def clear_old_props(conn):
-    """Delete props from previous days (Eastern calendar day)."""
+# How long to keep every intermediate snapshot, and how long to keep the final
+# one. Full history powers "the line moved 25.5 -> 26.5"; the closing line alone
+# is what closing-line value needs, and that stays worth having long after the
+# intraday movement stops being interesting.
+FULL_HISTORY_DAYS = 14
+CLOSING_LINE_DAYS = 365
+
+
+def compact_old_props(conn):
+    """Age out prop history in two stages instead of deleting yesterday's rows.
+
+    The previous version deleted every prop for a past game date on each run,
+    which made the append-only change pointless -- history would accumulate for
+    one day and then be thrown away. Instead:
+
+      1. Beyond FULL_HISTORY_DAYS, drop the intermediate snapshots but keep the
+         LAST one per prop. That is the closing line, the only snapshot needed
+         to grade a bet or compute CLV.
+      2. Beyond CLOSING_LINE_DAYS, drop the row entirely.
+    """
     with conn.cursor() as cur:
-        cur.execute("DELETE FROM player_props WHERE game_date < (NOW() AT TIME ZONE 'America/New_York')::date")
-        deleted = cur.rowcount
+        cur.execute(
+            """
+            DELETE FROM player_props p
+            WHERE p.game_date < (NOW() AT TIME ZONE 'America/New_York')::date
+                                 - MAKE_INTERVAL(days => %s)
+              AND EXISTS (
+                SELECT 1 FROM player_props q
+                WHERE q.player_name = p.player_name
+                  AND q.game_id     = p.game_id
+                  AND q.market      = p.market
+                  AND q.bookmaker   = p.bookmaker
+                  AND (q.fetched_at > p.fetched_at
+                       OR (q.fetched_at = p.fetched_at AND q.id > p.id))
+              )
+            """,
+            (FULL_HISTORY_DAYS,),
+        )
+        compacted = cur.rowcount
+
+        cur.execute(
+            """DELETE FROM player_props
+               WHERE game_date < (NOW() AT TIME ZONE 'America/New_York')::date
+                                  - MAKE_INTERVAL(days => %s)""",
+            (CLOSING_LINE_DAYS,),
+        )
+        expired = cur.rowcount
         conn.commit()
-        print(f"Cleared {deleted} old prop entries")
+        print(f"Compacted {compacted} intermediate snapshots, expired {expired} rows")
 
 
 def store_player_prop(conn, prop_data):
-    """Store or update a player prop in the database."""
+    """Append one prop snapshot. Never updates an existing row."""
     with conn.cursor() as cur:
         cur.execute("""
             INSERT INTO player_props (
                 player_name, player_id, game_id, game_date, home_team, away_team,
                 market, bookmaker, over_line, over_odds, under_line, under_odds, fetched_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            ON CONFLICT (player_name, game_id, market, bookmaker)
-            DO UPDATE SET
-                game_date = EXCLUDED.game_date,
-                over_line = EXCLUDED.over_line,
-                over_odds = EXCLUDED.over_odds,
-                under_line = EXCLUDED.under_line,
-                under_odds = EXCLUDED.under_odds,
-                fetched_at = NOW()
+            -- Append, never overwrite. Each fetch is a snapshot; the sequence of
+            -- them IS the line movement. Readers that want the current line use
+            -- the player_props_latest view.
         """, (
             prop_data['player_name'],
             prop_data['player_id'],
@@ -164,7 +220,7 @@ def main():
 
     try:
         # Clear old props
-        clear_old_props(conn)
+        compact_old_props(conn)
 
         # Fetch NBA events
         print("Fetching NBA events...")

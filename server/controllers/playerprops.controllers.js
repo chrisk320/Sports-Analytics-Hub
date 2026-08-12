@@ -70,15 +70,11 @@ async function storePlayerProp(prop) {
         INSERT INTO player_props (
             player_name, player_id, game_id, game_date, home_team, away_team,
             market, bookmaker, over_line, over_odds, under_line, under_odds, fetched_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
-        ON CONFLICT (player_name, game_id, market, bookmaker)
-        DO UPDATE SET
-            game_date = EXCLUDED.game_date,
-            over_line = EXCLUDED.over_line,
-            over_odds = EXCLUDED.over_odds,
-            under_line = EXCLUDED.under_line,
-            under_odds = EXCLUDED.under_odds,
-            fetched_at = NOW();
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW());
+        -- Append-only: each fetch is a snapshot, not a correction to the last
+        -- one. The ON CONFLICT that used to live here would now fail outright
+        -- anyway -- the unique constraint it named was dropped so that several
+        -- snapshots of the same prop can coexist.
     `;
 
     await pool.query(query, [
@@ -102,8 +98,9 @@ export const refreshPlayerProps = async (req, res) => {
     console.log('Starting player props refresh...');
 
     try {
-        // Clear old props from previous days (Eastern — the NBA's reference tz)
-        await pool.query(`DELETE FROM player_props WHERE game_date < (NOW() AT TIME ZONE 'America/New_York')::date`);
+        // Deliberately does NOT delete yesterday's props. They are the line
+        // history that the append-only change exists to keep; aging them out is
+        // the loader's compact_old_props(), which keeps the closing line.
 
         // Fetch all NBA events
         const events = await fetchNBAEvents();
@@ -191,10 +188,10 @@ export const getTodaysProps = async (req, res) => {
                 pp.*,
                 p.full_name,
                 p.headshot_url
-            FROM player_props pp
+            FROM player_props_latest pp
             LEFT JOIN players p ON pp.player_id = p.player_id
             WHERE pp.game_date = (
-                SELECT MIN(game_date) FROM player_props
+                SELECT MIN(game_date) FROM player_props_latest
                 WHERE game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
             )
             ORDER BY pp.game_id, pp.player_name, pp.market, pp.bookmaker;
@@ -220,7 +217,7 @@ export const getPropsByGame = async (req, res) => {
                 p.full_name,
                 p.headshot_url,
                 p.team_abbreviation
-            FROM player_props pp
+            FROM player_props_latest pp
             LEFT JOIN players p ON pp.player_id = p.player_id
             WHERE pp.game_id = $1
             ORDER BY pp.player_name, pp.market, pp.bookmaker;
@@ -244,11 +241,11 @@ export const getPlayerProps = async (req, res) => {
             SELECT
                 pp.*,
                 p.full_name
-            FROM player_props pp
+            FROM player_props_latest pp
             LEFT JOIN players p ON pp.player_id = p.player_id
             WHERE pp.player_id = $1
               AND pp.game_date = (
-                SELECT MIN(game_date) FROM player_props
+                SELECT MIN(game_date) FROM player_props_latest
                 WHERE player_id = $1
                   AND game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
               )
@@ -265,10 +262,10 @@ export const getPlayerProps = async (req, res) => {
             if (playerResult.rows.length > 0) {
                 const playerName = playerResult.rows[0].full_name;
                 const nameQuery = `
-                    SELECT * FROM player_props
+                    SELECT * FROM player_props_latest
                     WHERE LOWER(player_name) = LOWER($1)
                       AND game_date = (
-                        SELECT MIN(game_date) FROM player_props
+                        SELECT MIN(game_date) FROM player_props_latest
                         WHERE LOWER(player_name) = LOWER($1)
                           AND game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
                       )
@@ -294,7 +291,7 @@ export const getPlayerGameToday = async (req, res) => {
     try {
         const query = `
             SELECT game_id, game_date, home_team, away_team
-            FROM player_props
+            FROM player_props_latest
             WHERE player_id = $1
               AND game_date >= (NOW() AT TIME ZONE 'America/New_York')::date
             ORDER BY game_date
