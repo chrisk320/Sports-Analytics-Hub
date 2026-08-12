@@ -151,3 +151,21 @@ describe('buildTeamMarkets', () => {
     expect(ml.bestB).toBeNull();
   });
 });
+
+describe('spreadLabel', () => {
+  const parsed = parseTeamLines(rawEvent);
+
+  it('defaults to "Spread"', () => {
+    expect(buildTeamMarkets(parsed)[0].title).toBe('Spread');
+  });
+
+  it('uses the sport-specific label when supplied', () => {
+    // Structurally the same market; baseball calls it a Run Line.
+    expect(buildTeamMarkets(parsed, 'Run Line')[0].title).toBe('Run Line');
+  });
+
+  it('does not change the Total or Moneyline titles', () => {
+    const cards = buildTeamMarkets(parsed, 'Run Line');
+    expect(cards.map((c) => c.title)).toEqual(['Run Line', 'Total', 'Moneyline']);
+  });
+});

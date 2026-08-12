@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useParams, Navigate } from 'react-router-dom';
 import { api } from './lib/api';
 import { DEFAULT_BOOKS } from './lib/odds';
 import Header from './components/Header';
-import GameModal from './components/GameModal';
 import ChatBot from './components/ChatBot';
 import { SportProvider } from './context/SportContext';
+import { SPORTS, DEFAULT_SPORT, isSport } from './lib/markets';
 
 export default function Layout() {
+  // The sport for this whole subtree, from the /:sport route segment.
+  const { sport: sportParam } = useParams();
+  const sport = isSport(sportParam) ? sportParam : null;
+
   const [token, setToken] = useState(() => {
     const storedToken = localStorage.getItem('authToken');
     return storedToken ? JSON.parse(storedToken) : null;
@@ -36,12 +40,12 @@ export default function Layout() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [allTeams, setAllTeams] = useState([]);
-  const [nflGames, setNflGames] = useState([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [activeNFLGame, setActiveNFLGame] = useState(null);
-  const [activeNFLGameLines, setActiveNFLGameLines] = useState({ teamLines: [], playerProps: [] });
-  const [nbaGames, setNbaGames] = useState([]);
   const [authPrompt, setAuthPrompt] = useState(false);
+  // One entry per configured sport, so adding a league needs no new state.
+  const [gamesBySport, setGamesBySport] = useState(() =>
+    Object.fromEntries(SPORTS.map((s) => [s, []]))
+  );
 
   // Betting / watchlist UI state (shared with pages via Outlet context)
   const [pinnedPlayerId, setPinnedPlayerId] = useState(null);
@@ -50,7 +54,12 @@ export default function Layout() {
   const [selectedBooks, setSelectedBooks] = useState(DEFAULT_BOOKS);
   const [slip, setSlip] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('slip') || '[]');
+      const stored = JSON.parse(localStorage.getItem('slip') || '[]');
+      // One-time migration: picks saved before the slip was sport-aware have no
+      // `sport` and an id without it. Everything that existed then was NBA.
+      return stored.map((p) =>
+        p.sport ? p : { ...p, sport: DEFAULT_SPORT, id: `${DEFAULT_SPORT}-${p.id}` }
+      );
     } catch {
       return [];
     }
@@ -60,16 +69,19 @@ export default function Layout() {
     localStorage.setItem('slip', JSON.stringify(slip));
   }, [slip]);
 
-  const slipId = (p) => `${p.playerId}-${p.market}-${p.side}-${p.book}`;
+  // Sport is part of the key: player ids are only unique WITHIN a sport, so an
+  // NBA player 23 and an MLB player 23 would otherwise collide in the slip.
+  const slipId = (p) => `${p.sport}-${p.playerId}-${p.market}-${p.side}-${p.book}`;
   const addToSlip = (pick) =>
     setSlip((prev) => {
-      const id = slipId(pick);
+      const withSport = { sport, ...pick };
+      const id = slipId(withSport);
       if (prev.some((p) => p.id === id)) return prev;
-      return [...prev, { ...pick, id }];
+      return [...prev, { ...withSport, id }];
     });
   const removeFromSlip = (id) => setSlip((prev) => prev.filter((p) => p.id !== id));
   const clearSlip = () => setSlip([]);
-  const isInSlip = (pick) => slip.some((p) => p.id === slipId(pick));
+  const isInSlip = (pick) => slip.some((p) => p.id === slipId({ sport, ...pick }));
 
   useEffect(() => {
     if (user) {
@@ -104,18 +116,19 @@ export default function Layout() {
     fetchInitialData();
   }, []);
 
+  // Games for every sport. /bets/:sport/games is backed by the Odds API's
+  // /events endpoint, which costs 0 credits, so fetching all three is free.
   useEffect(() => {
-    api
-      .get('/nflbets/nflgames')
-      .then((res) => setNflGames(res.data))
-      .catch((err) => console.error('Failed to fetch NFL games:', err));
-  }, []);
-
-  useEffect(() => {
-    api
-      .get('/nbabets/nbagames')
-      .then((res) => setNbaGames(res.data))
-      .catch((err) => console.error('Failed to fetch NBA games:', err));
+    let cancelled = false;
+    SPORTS.forEach((s) => {
+      api
+        .get(`/bets/${s}/games`)
+        .then((res) => !cancelled && setGamesBySport((prev) => ({ ...prev, [s]: res.data || [] })))
+        .catch((err) => console.error(`Failed to fetch ${s} games:`, err));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSearchChange = (e) => {
@@ -162,29 +175,6 @@ export default function Layout() {
     }
   };
 
-  const handleSelectNFLGame = async (game) => {
-    setActiveNFLGame(game);
-    setIsLoading(true);
-    try {
-      const [teamLinesRes, playerPropsRes] = await Promise.all([
-        api.get(`/nflbets/nflteamlines/${game.id}`),
-        api.get(`/nflbets/nflplayerprops/${game.id}`),
-      ]);
-      setActiveNFLGameLines({ teamLines: teamLinesRes.data, playerProps: playerPropsRes.data });
-    } catch (error) {
-      console.error('Failed to fetch NFL game details:', error);
-      setActiveNFLGame(null);
-      setActiveNFLGameLines({ teamLines: [], playerProps: [] });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setActiveNFLGame(null);
-    setActiveNFLGameLines({ teamLines: [], playerProps: [] });
-  };
-
   useEffect(() => {
     document.body.className = 'bg-slate-950';
     return () => {
@@ -192,21 +182,28 @@ export default function Layout() {
     };
   }, []);
 
+  // An unrecognized /:sport (typo, stale link) redirects rather than rendering
+  // a broken page. Placed after every hook so hook order stays stable — an
+  // early return above them would break the Rules of Hooks.
+  if (!sport) return <Navigate to={`/${DEFAULT_SPORT}`} replace />;
+
   // Season detection: with no upcoming games (offseason), the live-data pages
   // are empty. Derived from the games already fetched — no extra API spend.
   const seasonStatus = {
-    nbaInSeason: nbaGames.length > 0,
-    nflInSeason: nflGames.length > 0,
+    // Per-sport, plus the flags the existing pages already read.
+    bySport: Object.fromEntries(SPORTS.map((s) => [s, gamesBySport[s].length > 0])),
+    inSeason: gamesBySport[sport].length > 0,
   };
-  seasonStatus.isOffseason = !seasonStatus.nbaInSeason && !seasonStatus.nflInSeason;
 
   const context = {
     // data
     allPlayers,
     allTeams,
     selectedPlayers,
-    nbaGames,
-    nflGames,
+    // The active sport's games. Pages read `games`; `gamesBySport` is there for
+    // anything that needs the whole picture (e.g. a cross-sport summary).
+    games: gamesBySport[sport],
+    gamesBySport,
     seasonStatus,
     user,
     isLoading,
@@ -216,8 +213,6 @@ export default function Layout() {
     handleSearchChange,
     handleAddPlayer,
     handleRemovePlayer,
-    // NFL games still use the modal (NBA games now route to /games/:id)
-    handleSelectNFLGame,
     // betting / watchlist
     pinnedPlayerId,
     setPinnedPlayerId,
@@ -235,9 +230,7 @@ export default function Layout() {
   };
 
   return (
-    // PR 7 drives this from the :sport route segment. Until then it defaults to
-    // NBA, which preserves current behavior exactly.
-    <SportProvider>
+    <SportProvider sport={sport}>
     <div className="min-h-screen w-full bg-slate-950 font-sans text-slate-50 flex flex-col">
       <Header isLoading={isLoading} user={user} setToken={setToken} authPrompt={authPrompt} />
 
@@ -248,7 +241,7 @@ export default function Layout() {
         <button
           onClick={() => setIsChatOpen(true)}
           className="fixed bottom-6 right-6 bg-purple-500 hover:bg-purple-400 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
-          title="Ask AI about NBA stats"
+          title="Ask AI about player stats"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -260,8 +253,6 @@ export default function Layout() {
           </svg>
         </button>
       </main>
-
-      <GameModal game={activeNFLGame} gameLines={activeNFLGameLines} isLoading={isLoading} onClose={handleCloseModal} />
 
       <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 

@@ -162,7 +162,7 @@ export default function PlayerDetailPage() {
     return (
       <div className="mx-auto max-w-3xl py-20 text-center text-slate-400">
         <p>Player not found.</p>
-        <Link to="/" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
+        <Link to={`/${sport}`} className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
           ← Back to dashboard
         </Link>
       </div>
@@ -173,7 +173,7 @@ export default function PlayerDetailPage() {
     <div className="mx-auto max-w-[1536px] space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-400">
-        <Link to="/" className="flex items-center gap-1 hover:text-slate-200">
+        <Link to={`/${sport}`} className="flex items-center gap-1 hover:text-slate-200">
           <ChevronLeft className="h-4 w-4" /> <Star className="h-3.5 w-3.5" /> My players
         </Link>
         <span className="text-slate-600">/</span>

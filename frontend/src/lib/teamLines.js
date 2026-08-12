@@ -58,13 +58,18 @@ function bestBook(rows, priceKey) {
 }
 
 // Three render-ready cards: Spread / Total / Moneyline.
-export function buildTeamMarkets(parsed) {
+//
+// `spreadLabel` comes from the sport registry — the market is structurally
+// identical across sports (a handicap with a price), but baseball universally
+// calls it a Run Line, and showing "Spread" on an MLB page reads as wrong to
+// anyone who bets it.
+export function buildTeamMarkets(parsed, spreadLabel = 'Spread') {
   if (!parsed) return [];
   const { home, away, moneyline, spread, total } = parsed;
   return [
     {
       key: 'spread',
-      title: 'Spread',
+      title: spreadLabel,
       colA: home,
       colB: away,
       rows: spread.map((r) => ({

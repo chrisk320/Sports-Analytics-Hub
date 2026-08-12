@@ -18,7 +18,7 @@ function vig(over, under) {
   return (a + b - 1) * 100;
 }
 
-export default function MarketDepthPanel({ player, props = [], marketId, nbaGames = [], onAddToSlip, hasWatchlist = true }) {
+export default function MarketDepthPanel({ player, props = [], marketId, games = [], onAddToSlip, hasWatchlist = true }) {
   const { sport } = useSport();
   const summary = summarizeMarket(sport, props, marketId);
   const rows = summary?.rows || [];
@@ -115,12 +115,12 @@ export default function MarketDepthPanel({ player, props = [], marketId, nbaGame
       {/* Tonight's games strip */}
       <div className="border-t border-slate-800 p-4">
         <h4 className="mb-2 text-[11px] uppercase tracking-wide text-slate-500">Tonight's games</h4>
-        {nbaGames.length > 0 ? (
+        {games.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {nbaGames.slice(0, 8).map((g) => (
+            {games.slice(0, 8).map((g) => (
               <Link
                 key={g.id}
-                to={`/games/${g.id}`}
+                to={`/${sport}/games/${g.id}`}
                 className="rounded-lg border border-slate-700 bg-slate-800/60 px-2.5 py-1 text-xs text-slate-300 transition hover:border-purple-500 hover:text-slate-50"
               >
                 {g.away_team} @ {g.home_team}

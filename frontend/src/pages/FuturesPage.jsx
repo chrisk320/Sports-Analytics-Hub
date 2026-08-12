@@ -7,9 +7,10 @@ import { Panel } from '../components/ui/panel';
 // Each market maps to a backend futures endpoint (outrights). The backend
 // whitelists the sport keys; we just pick the league + market id here.
 const MARKETS = [
-  { id: 'champion', league: 'nbabets', label: 'NBA Champion' },
-  { id: 'mvp', league: 'nbabets', label: 'NBA MVP' },
-  { id: 'superbowl', league: 'nflbets', label: 'Super Bowl Winner' },
+  { id: 'champion', sport: 'nba', label: 'NBA Champion' },
+  { id: 'mvp', sport: 'nba', label: 'NBA MVP' },
+  { id: 'superbowl', sport: 'nfl', label: 'Super Bowl Winner' },
+  { id: 'worldseries', sport: 'mlb', label: 'World Series Winner' },
 ];
 
 // Kalshi prediction-market series (served by /kalshi/:market).
@@ -83,7 +84,7 @@ function SportsbookFutures() {
     setLoading(true);
     setError(null);
     api
-      .get(`/${market.league}/futures/${market.id}`)
+      .get(`/bets/${market.sport}/futures/${market.id}`)
       .then((res) => active && setEvents(Array.isArray(res.data) ? res.data : []))
       .catch((err) => {
         console.error('Failed to fetch futures:', err);

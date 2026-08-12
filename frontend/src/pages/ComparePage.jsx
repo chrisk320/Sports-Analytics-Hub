@@ -4,6 +4,7 @@ import { Loader, Search } from 'lucide-react';
 import { api } from '../lib/api';
 import { formatOdds, bookLabel, DEFAULT_BOOKS } from '../lib/odds';
 import { useSport } from '@/context/SportContext';
+import { marketsFor } from '../lib/markets';
 import { buildCompareRows, sortRows, bestBookToday, avgSavings, evCount } from '../lib/compare';
 import MarketToggle from '../components/home/MarketToggle';
 import OffseasonBanner from '../components/OffseasonBanner';
@@ -191,7 +192,7 @@ export default function ComparePage() {
 
   return (
     <div className="mx-auto max-w-[1536px] space-y-6">
-      {!seasonStatus?.nbaInSeason && <OffseasonBanner sport="NBA" />}
+      {!seasonStatus?.inSeason && <OffseasonBanner sport={marketsFor(sport).label} />}
 
       {/* Title */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -301,7 +302,7 @@ export default function ComparePage() {
               <p className="mt-1 text-sm text-slate-500">
                 Lines appear here on game days once tonight's props are fetched.
               </p>
-              <Link to="/games" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
+              <Link to={`/${sport}/games`} className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
                 Browse games →
               </Link>
             </>

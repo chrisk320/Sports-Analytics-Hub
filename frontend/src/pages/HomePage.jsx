@@ -19,7 +19,7 @@ const POLL_MS = 45000;
 export default function HomePage() {
   const {
     selectedPlayers,
-    nbaGames,
+    games,
     seasonStatus,
     searchTerm,
     searchResults,
@@ -38,9 +38,9 @@ export default function HomePage() {
     clearSlip,
   } = useOutletContext();
 
-  const { sport } = useSport();
+  const { sport, label } = useSport();
 
-  const isOffseason = seasonStatus && !seasonStatus.nbaInSeason;
+  const isOffseason = seasonStatus && !seasonStatus.inSeason;
 
   const [todaysProps, setTodaysProps] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -134,7 +134,7 @@ export default function HomePage() {
   if (isOffseason) {
     return (
       <div className="mx-auto max-w-[1536px] space-y-6">
-        <OffseasonBanner sport="NBA" />
+        <OffseasonBanner sport={label} />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <h1 className="text-3xl font-bold">Offseason hub</h1>
@@ -153,7 +153,7 @@ export default function HomePage() {
           <Panel tone="primary">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Last season's top scorers</h2>
-              <Link to="/explore" className="text-sm text-cyan-400 hover:text-cyan-300">Full leaderboards →</Link>
+              <Link to={`/${sport}/explore`} className="text-sm text-cyan-400 hover:text-cyan-300">Full leaderboards →</Link>
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
               {topScorers.map((p, i) => (
@@ -241,14 +241,14 @@ export default function HomePage() {
             player={activePlayer}
             props={activeProps}
             marketId={watchlistMarket}
-            nbaGames={nbaGames}
+            games={games}
             onAddToSlip={addToSlip}
             hasWatchlist={selectedPlayers.length > 0}
           />
         </div>
 
         <div className="space-y-6 xl:w-[320px] xl:shrink-0">
-          <AlertsFeed edges={edges} gameCount={nbaGames.length} lastUpdated={lastUpdated} />
+          <AlertsFeed edges={edges} gameCount={games.length} lastUpdated={lastUpdated} />
           <SlipCard slip={slip} onRemove={removeFromSlip} onClear={clearSlip} />
         </div>
       </div>

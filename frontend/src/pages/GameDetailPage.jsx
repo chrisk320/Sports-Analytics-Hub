@@ -7,10 +7,12 @@ import { matchKalshiEvent, buildKalshiMarket } from '../lib/kalshi';
 import TeamMarketCard from '../components/game/TeamMarketCard';
 import TeamPropsTable from '../components/game/TeamPropsTable';
 import KalshiMarketCard from '../components/game/KalshiMarketCard';
+import { useSport } from '@/context/SportContext';
 
 export default function GameDetailPage() {
   const { gameId } = useParams();
-  const { nbaGames, allTeams } = useOutletContext();
+  const { games, allTeams } = useOutletContext();
+  const { sport, spreadLabel } = useSport();
 
   const [loading, setLoading] = useState(true);
   const [parsed, setParsed] = useState(null);
@@ -22,9 +24,9 @@ export default function GameDetailPage() {
     setLoading(true);
     (async () => {
       const [linesRes, propsRes, kalshiRes] = await Promise.all([
-        api.get(`/nbabets/nbateamlines/${gameId}`).catch(() => ({ data: null })),
+        api.get(`/bets/${sport}/teamlines/${gameId}`).catch(() => ({ data: null })),
         api.get(`/playerprops/game/${gameId}`).catch(() => ({ data: [] })),
-        api.get('/kalshi/nbagames').catch(() => ({ data: null })),
+        sport === 'nba' ? api.get('/kalshi/nbagames').catch(() => ({ data: null })) : Promise.resolve({ data: null }),
       ]);
       if (cancelled) return;
       setParsed(parseTeamLines(linesRes.data));
@@ -35,9 +37,9 @@ export default function GameDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [gameId]);
+  }, [gameId, sport]);
 
-  const gameFromList = nbaGames.find((g) => g.id === gameId);
+  const gameFromList = games.find((g) => g.id === gameId);
   const meta = useMemo(() => {
     if (parsed) return { home: parsed.home, away: parsed.away, commence: parsed.commenceTime };
     if (gameFromList) return { home: gameFromList.home_team, away: gameFromList.away_team, commence: gameFromList.commence_time };
@@ -45,7 +47,7 @@ export default function GameDetailPage() {
     return null;
   }, [parsed, gameFromList, props]);
 
-  const markets = useMemo(() => buildTeamMarkets(parsed), [parsed]);
+  const markets = useMemo(() => buildTeamMarkets(parsed, spreadLabel), [parsed, spreadLabel]);
 
   const kalshiMarket = useMemo(() => {
     if (!meta || !kalshiData?.events?.length) return null;
@@ -84,7 +86,7 @@ export default function GameDetailPage() {
     return (
       <div className="mx-auto max-w-3xl py-20 text-center text-slate-400">
         <p>Game not found, or no lines posted.</p>
-        <Link to="/games" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
+        <Link to={`/${sport}/games`} className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
           ← Back to games
         </Link>
       </div>
@@ -108,7 +110,7 @@ export default function GameDetailPage() {
     <div className="mx-auto max-w-[1536px] space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-slate-400">
-        <Link to="/games" className="flex items-center gap-1 hover:text-slate-200">
+        <Link to={`/${sport}/games`} className="flex items-center gap-1 hover:text-slate-200">
           <ChevronLeft className="h-4 w-4" /> Games
         </Link>
         <span className="text-slate-600">/</span>
