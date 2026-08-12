@@ -107,6 +107,15 @@ describe('role gating', () => {
 
   it('falls back to the full order when no role is known', () => {
     expect(marketsForRole('nba', null)).toEqual(marketOrder('nba'));
+
+    // A defensive back produces no offensive market, but ANYTD is ungated
+    // because anyone can score — so the page shows exactly that, not a blank.
+    expect(marketsForRole('nfl', 'CB')).toEqual(['ANYTD']);
+    expect(defaultMarketFor('nfl', 'CB')).toBe('ANYTD');
+
+    // Where every market IS role-gated, an unrecognized role falls back to the
+    // full order rather than rendering an empty toggle.
+    expect(marketsForRole('mlb', 'two-way')).toEqual(marketOrder('mlb'));
   });
 
   it('picks a default market the role can actually produce', () => {

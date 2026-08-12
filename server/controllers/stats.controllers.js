@@ -9,11 +9,25 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+// Every endpoint here is sport-scoped via ?sport=, defaulting to nba so the
+// deployed frontend keeps working unchanged while it adopts the parameter.
+const VALID_SPORTS = new Set(['nba', 'nfl', 'mlb']);
+const sportOf = (req) => {
+    const s = String(req.query.sport || 'nba').toLowerCase();
+    return VALID_SPORTS.has(s) ? s : 'nba';
+};
+
+// Game-log rows carry sport-specific numbers in the `stats` JSONB column.
+// Flatten them onto the row so the frontend's statFromLog() can read
+// `passing_yards` for the NFL exactly as it reads `pts` for the NBA.
+const flattenStats = (rows) => rows.map(({ stats, ...rest }) => ({ ...rest, ...(stats || {}) }));
+
 export const getPlayers = async (req, res) => {
     console.log(`Received request for all players list.`);
     try {
-        const query = 'SELECT player_id, full_name, headshot_url FROM players ORDER BY full_name ASC;';
-        const result = await pool.query(query);
+        const query = `SELECT player_id, full_name, headshot_url, position, team_abbreviation
+                       FROM players WHERE sport = $1 ORDER BY full_name ASC;`;
+        const result = await pool.query(query, [sportOf(req)]);
         res.status(200).json(result.rows);
     } catch (err) {
         console.error('Error fetchign player list', err.stack);
@@ -24,7 +38,8 @@ export const getPlayer = async (req, res) => {
     const { playerId } = req.params;
     console.log(`Received request for player info for ID: ${playerId}`);
     try {
-        const query = 'SELECT player_id, full_name, headshot_url FROM players WHERE player_id = $1;';
+        const query = `SELECT player_id, full_name, headshot_url, position, team_abbreviation, sport
+                       FROM players WHERE player_id = $1;`;
         const result = await pool.query(query, [playerId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Player not found' });
@@ -107,10 +122,13 @@ export const getFullGameLogs = async (req, res) => {
             LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id
             WHERE pgl.player_id = $1
             ORDER BY pgl.game_date DESC
-            LIMIT 10;
+            LIMIT $2;
         `;
-        const result = await pool.query(query, [playerId]);
-        res.status(200).json(result.rows);
+        // The window is caller-driven: "last 10" suits an 82-game NBA season,
+        // but is nearly half a 17-game NFL season. Bounded server-side.
+        const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+        const result = await pool.query(query, [playerId, limit]);
+        res.status(200).json(flattenStats(result.rows));
     } catch (err) {
         console.error('Error fetching full game logs', err.stack);
         res.status(500).send('Server Error');
@@ -120,7 +138,10 @@ export const getFullGameLogs = async (req, res) => {
 export const getSeasons = async (req, res) => {
     console.log(`Received request for available seasons.`);
     try {
-        const result = await pool.query('SELECT DISTINCT season FROM player_game_logs ORDER BY season DESC;');
+        const result = await pool.query(
+            'SELECT DISTINCT season FROM player_game_logs WHERE sport = $1 ORDER BY season DESC;',
+            [sportOf(req)]
+        );
         res.status(200).json(result.rows.map((r) => r.season));
     } catch (err) {
         console.error('Error fetching seasons', err.stack);
@@ -128,37 +149,68 @@ export const getSeasons = async (req, res) => {
     }
 };
 
-// Whitelist of leaderboard stats -> SQL aggregate expression. Keys come from the
-// request, so we never interpolate raw column names from user input.
-const LEADERBOARD_STATS = {
-    pts: 'AVG(pgl.pts)',
-    reb: 'AVG(pgl.reb)',
-    ast: 'AVG(pgl.ast)',
-    stl: 'AVG(pgl.stl)',
-    blk: 'AVG(pgl.blk)',
-    ts: 'AVG(abs.true_shooting_percentage)',
-    usage: 'AVG(abs.usage_percentage)',
+// Whitelist of leaderboard stats -> SQL aggregate expression, per sport. Keys
+// come from the request, so we never interpolate raw column names from user
+// input — the whitelist IS the injection defense.
+//
+// NBA still reads its legacy columns (which remain authoritative until the
+// contract migration drops them); NFL reads the JSONB blob. Same shape, so the
+// query below is identical for both.
+const LEADERBOARD_STATS_BY_SPORT = {
+    nba: {
+        pts: 'AVG(pgl.pts)',
+        reb: 'AVG(pgl.reb)',
+        ast: 'AVG(pgl.ast)',
+        stl: 'AVG(pgl.stl)',
+        blk: 'AVG(pgl.blk)',
+        ts: 'AVG(abs.true_shooting_percentage)',
+        usage: 'AVG(abs.usage_percentage)',
+    },
+    nfl: {
+        pass_yds: "AVG((pgl.stats->>'passing_yards')::numeric)",
+        pass_tds: "AVG((pgl.stats->>'passing_tds')::numeric)",
+        rush_yds: "AVG((pgl.stats->>'rushing_yards')::numeric)",
+        rec: "AVG((pgl.stats->>'receptions')::numeric)",
+        rec_yds: "AVG((pgl.stats->>'receiving_yards')::numeric)",
+        ppr: "AVG((pgl.stats->>'fantasy_points_ppr')::numeric)",
+    },
+    mlb: {},
 };
 
+// Minimum games to appear on a leaderboard. Sport-specific because 20 games is
+// a quarter of an NBA season but larger than an entire NFL one.
+const MIN_GAMES_BY_SPORT = { nba: 20, nfl: 4, mlb: 20 };
+
 export const getLeaderboard = async (req, res) => {
-    const { season, stat = 'pts' } = req.query;
+    const sport = sportOf(req);
+    const allowed = LEADERBOARD_STATS_BY_SPORT[sport] || {};
+    // Default to the sport's first configured stat rather than a hardcoded
+    // 'pts', which does not exist outside basketball.
+    const { season, stat = Object.keys(allowed)[0] } = req.query;
     const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
-    const minGames = 20; // exclude small samples
-    const statExpr = LEADERBOARD_STATS[stat];
-    console.log(`Received leaderboard request: season=${season || 'latest'} stat=${stat}`);
+    const minGames = MIN_GAMES_BY_SPORT[sport] ?? 20;
+    const statExpr = allowed[stat];
+    console.log(`Received leaderboard request: sport=${sport} season=${season || 'latest'} stat=${stat}`);
 
     if (!statExpr) {
-        return res.status(400).json({ error: `Invalid stat. Allowed: ${Object.keys(LEADERBOARD_STATS).join(', ')}` });
+        return res.status(400).json({
+            error: Object.keys(allowed).length
+                ? `Invalid stat '${stat}' for ${sport}. Allowed: ${Object.keys(allowed).join(', ')}`
+                : `No leaderboard stats configured for ${sport}`,
+        });
     }
 
     try {
-        const params = [];
+        const params = [sport];
+        const sportParam = `$${params.length}`;
         let seasonFilter;
         if (season) {
             params.push(season);
             seasonFilter = `pgl.season = $${params.length}`;
         } else {
-            seasonFilter = `pgl.season = (SELECT MAX(season) FROM player_game_logs)`;
+            // Latest season FOR THIS SPORT — seasons are strings like '2025-26'
+            // (NBA) and '2024' (NFL), so a global MAX would be meaningless.
+            seasonFilter = `pgl.season = (SELECT MAX(season) FROM player_game_logs WHERE sport = ${sportParam})`;
         }
         params.push(minGames);
         const minGamesParam = `$${params.length}`;
@@ -176,7 +228,7 @@ export const getLeaderboard = async (req, res) => {
             FROM player_game_logs pgl
             JOIN players p ON p.player_id = pgl.player_id
             LEFT JOIN advanced_box_scores abs ON abs.game_log_id = pgl.game_log_id
-            WHERE ${seasonFilter}
+            WHERE pgl.sport = ${sportParam} AND ${seasonFilter}
             GROUP BY pgl.player_id, p.full_name, p.headshot_url
             HAVING COUNT(*) >= ${minGamesParam} AND ${statExpr} IS NOT NULL
             ORDER BY value DESC NULLS LAST

@@ -3,7 +3,7 @@ import { useParams, useOutletContext, Link } from 'react-router-dom';
 import { User, Star, Loader, ChevronLeft } from 'lucide-react';
 import { api } from '../lib/api';
 import { summarizeMarket, avgFromLogs } from '../lib/odds';
-import { marketLabel } from '../lib/markets';
+import { marketLabel, marketsForRole, defaultMarketFor } from '../lib/markets';
 import { useSport } from '@/context/SportContext';
 import RecentGamesBarChart from '../components/RecentGamesBarChart';
 import MarketToggle from '../components/home/MarketToggle';
@@ -39,7 +39,7 @@ export default function PlayerDetailPage() {
   const { playerId } = useParams();
   const { allPlayers, allTeams, addToSlip, selectedPlayers, handleAddPlayer, handleRemovePlayer } =
     useOutletContext();
-  const { sport, order, defaultMarket, recentWindow, recentLabel } = useSport();
+  const { sport, defaultMarket, recentWindow, recentLabel } = useSport();
 
   const [loading, setLoading] = useState(true);
   const [fetchedPlayer, setFetchedPlayer] = useState(null);
@@ -58,6 +58,20 @@ export default function PlayerDetailPage() {
   );
   const player = playerFromList || fetchedPlayer;
 
+  // Football positions have disjoint stat sets: a tight end never throws, so
+  // offering (and defaulting to) PASS YDS renders an empty chart. Narrow both
+  // the toggle and the selected market to what this player's role produces.
+  const role = player?.position;
+  const roleMarkets = useMemo(() => marketsForRole(sport, role), [sport, role]);
+  useEffect(() => {
+    if (roleMarkets.length && !roleMarkets.includes(chartMarket)) {
+      setChartMarket(defaultMarketFor(sport, role));
+    }
+    // chartMarket is deliberately omitted: this only corrects a market the
+    // player cannot produce, and depending on it would fight manual selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sport, role, roleMarkets]);
+
   // Core data fetch (keyed on playerId only)
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +81,7 @@ export default function PlayerDetailPage() {
     (async () => {
       const [seasonRes, logsRes, propsRes, gameRes, playerRes] = await Promise.all([
         api.get(`/players/${playerId}/season-averages`).catch(() => ({ data: null })),
-        api.get(`/players/${playerId}/full-gamelogs`).catch(() => ({ data: [] })),
+        api.get(`/players/${playerId}/full-gamelogs`, { params: { limit: recentWindow } }).catch(() => ({ data: [] })),
         api.get(`/playerprops/${playerId}`).catch(() => ({ data: [] })),
         api.get(`/playerprops/${playerId}/game`).catch(() => ({ data: null })),
         api.get(`/players/${playerId}`).catch(() => ({ data: null })),
@@ -84,7 +98,7 @@ export default function PlayerDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [playerId, defaultMarket]);
+  }, [playerId, defaultMarket, recentWindow]);
 
   // Resolve tonight's opponent + fetch the player's splits vs them
   useEffect(() => {
@@ -137,7 +151,7 @@ export default function PlayerDetailPage() {
   const oppAvg = oppSplit ? avgFromLogs(sport, oppSplit.logs, chartMarket) : null;
 
   const addHeadlineToSlip = () => {
-    const s = summarizeMarket(sport, props, defaultMarket) || summarizeMarket(sport, props, chartMarket);
+    const s = summarizeMarket(sport, props, defaultMarketFor(sport, role)) || summarizeMarket(sport, props, chartMarket);
     if (!s?.bestOver || !player) return;
     addToSlip({
       playerId: player.player_id,
@@ -227,13 +241,30 @@ export default function PlayerDetailPage() {
 
         {/* Stat strip */}
         <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          <StatCell label="PTS" value={season?.points_avg} />
-          <StatCell label="REB" value={season?.rebounds_avg} />
-          <StatCell label="AST" value={season?.assists_avg} />
-          <StatCell label="STL" value={season?.steals_avg} />
-          <StatCell label="TS%" value={season?.ts_pct} />
-          <StatCell label="USG%" value={season?.usg_pct} />
-          <StatCell label="ORtg" value={season?.off_rating} title={RATING_NOTE} />
+          {sport === 'nba' ? (
+            <>
+              <StatCell label="PTS" value={season?.points_avg} />
+              <StatCell label="REB" value={season?.rebounds_avg} />
+              <StatCell label="AST" value={season?.assists_avg} />
+              <StatCell label="STL" value={season?.steals_avg} />
+              <StatCell label="TS%" value={season?.ts_pct} />
+              <StatCell label="USG%" value={season?.usg_pct} />
+              <StatCell label="ORtg" value={season?.off_rating} title={RATING_NOTE} />
+            </>
+          ) : (
+            // Other sports have no season-averages endpoint yet (it computes
+            // basketball columns), so derive per-game averages for the markets
+            // this player's position actually produces. Showing the NBA strip
+            // here rendered seven empty cells, which reads as broken data.
+            roleMarkets.map((id) => (
+              <StatCell
+                key={id}
+                label={`${marketLabel(sport, id)} ${recentLabel}`}
+                value={avgFromLogs(sport, logs, id)?.toFixed(1)}
+                title={`Average over the last ${recentWindow} games. Season totals are not yet computed for ${sport.toUpperCase()}.`}
+              />
+            ))
+          )}
         </div>
       </Panel>
 
@@ -255,7 +286,7 @@ export default function PlayerDetailPage() {
                   )}
                 </p>
               </div>
-              <MarketToggle value={chartMarket} onChange={setChartMarket} />
+              <MarketToggle value={chartMarket} onChange={setChartMarket} options={roleMarkets} />
             </div>
             <RecentGamesBarChart data={last10} marketId={chartMarket} line={chartLine} />
           </Panel>
@@ -354,7 +385,7 @@ export default function PlayerDetailPage() {
                 </p>
                 {oppSplit.logs.length > 0 ? (
                   <div className="mt-2 grid grid-cols-3 gap-2">
-                    {order.slice(0, 3).map((id) => (
+                    {roleMarkets.slice(0, 3).map((id) => (
                       <StatCell
                         key={id}
                         label={marketLabel(sport, id)}

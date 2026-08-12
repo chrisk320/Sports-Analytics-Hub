@@ -4,23 +4,45 @@ import { Loader, Trophy } from 'lucide-react';
 import { api } from '../lib/api';
 import SearchBar from '../components/SearchBar';
 import { Panel } from '../components/ui/panel';
+import { useSport } from '@/context/SportContext';
 
-// Leaderboard stats — keys must match the backend whitelist (LEADERBOARD_STATS).
-const STATS = [
-  { id: 'pts', label: 'Points', unit: '' },
-  { id: 'reb', label: 'Rebounds', unit: '' },
-  { id: 'ast', label: 'Assists', unit: '' },
-  { id: 'stl', label: 'Steals', unit: '' },
-  { id: 'blk', label: 'Blocks', unit: '' },
-  { id: 'ts', label: 'True Shooting', unit: '%' },
-  { id: 'usage', label: 'Usage', unit: '%' },
-];
+// Leaderboard stats per sport. Ids must match the backend whitelist
+// (LEADERBOARD_STATS_BY_SPORT in stats.controllers.js) — the backend rejects
+// anything else, so these two lists have to stay in step.
+const STATS_BY_SPORT = {
+  nba: [
+    { id: 'pts', label: 'Points', unit: '' },
+    { id: 'reb', label: 'Rebounds', unit: '' },
+    { id: 'ast', label: 'Assists', unit: '' },
+    { id: 'stl', label: 'Steals', unit: '' },
+    { id: 'blk', label: 'Blocks', unit: '' },
+    { id: 'ts', label: 'True Shooting', unit: '%' },
+    { id: 'usage', label: 'Usage', unit: '%' },
+  ],
+  nfl: [
+    { id: 'pass_yds', label: 'Pass Yards', unit: '' },
+    { id: 'pass_tds', label: 'Pass TDs', unit: '' },
+    { id: 'rush_yds', label: 'Rush Yards', unit: '' },
+    { id: 'rec', label: 'Receptions', unit: '' },
+    { id: 'rec_yds', label: 'Rec Yards', unit: '' },
+    { id: 'ppr', label: 'Fantasy (PPR)', unit: '' },
+  ],
+  mlb: [],
+};
 
-const RECAP_CATEGORIES = [
-  { id: 'pts', label: 'Points leader' },
-  { id: 'reb', label: 'Rebounds leader' },
-  { id: 'ast', label: 'Assists leader' },
-];
+const RECAP_BY_SPORT = {
+  nba: [
+    { id: 'pts', label: 'Points leader' },
+    { id: 'reb', label: 'Rebounds leader' },
+    { id: 'ast', label: 'Assists leader' },
+  ],
+  nfl: [
+    { id: 'pass_yds', label: 'Passing leader' },
+    { id: 'rush_yds', label: 'Rushing leader' },
+    { id: 'rec_yds', label: 'Receiving leader' },
+  ],
+  mlb: [],
+};
 
 const segCls = (on) =>
   `rounded-md px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition ${
@@ -41,10 +63,14 @@ function StatCol({ label, a, b }) {
 
 export default function ExplorePage() {
   const { allPlayers } = useOutletContext();
+  const { sport, label: sportLabel } = useSport();
+  // Memoized so they're stable identities in effect/memo dependency lists.
+  const STATS = useMemo(() => STATS_BY_SPORT[sport] ?? [], [sport]);
+  const RECAP_CATEGORIES = useMemo(() => RECAP_BY_SPORT[sport] ?? [], [sport]);
 
   const [seasons, setSeasons] = useState([]);
   const [season, setSeason] = useState('');
-  const [stat, setStat] = useState('pts');
+  const [stat, setStat] = useState(STATS[0]?.id);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,14 +84,20 @@ export default function ExplorePage() {
   // Load available seasons; default to the latest.
   useEffect(() => {
     api
-      .get('/players/seasons')
+      .get('/players/seasons', { params: { sport } })
       .then((res) => {
         const list = res.data || [];
         setSeasons(list);
         setSeason(list[0] || '');
       })
       .catch((err) => console.error('Failed to fetch seasons:', err));
-  }, []);
+  }, [sport]);
+
+  // Switching sport invalidates the selected stat (NBA 'pts' is meaningless for
+  // the NFL, and the backend rejects it), so snap back to the sport's first.
+  useEffect(() => {
+    setStat(STATS[0]?.id);
+  }, [sport]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Leaderboard for the selected season + stat.
   useEffect(() => {
@@ -73,14 +105,14 @@ export default function ExplorePage() {
     let active = true;
     setLoading(true);
     api
-      .get('/players/leaderboard', { params: { season, stat, limit: 25 } })
+      .get('/players/leaderboard', { params: { sport, season, stat, limit: 25 } })
       .then((res) => active && setRows(res.data || []))
       .catch((err) => console.error('Failed to fetch leaderboard:', err))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [season, stat]);
+  }, [sport, season, stat]);
 
   // Season recap — top player in each core category.
   useEffect(() => {
@@ -89,7 +121,7 @@ export default function ExplorePage() {
     Promise.all(
       RECAP_CATEGORIES.map((c) =>
         api
-          .get('/players/leaderboard', { params: { season, stat: c.id, limit: 1 } })
+          .get('/players/leaderboard', { params: { sport, season, stat: c.id, limit: 1 } })
           .then((res) => [c.id, (res.data || [])[0] || null])
           .catch(() => [c.id, null])
       )
@@ -97,9 +129,9 @@ export default function ExplorePage() {
     return () => {
       active = false;
     };
-  }, [season]);
+  }, [sport, season, RECAP_CATEGORIES]);
 
-  const statLabel = useMemo(() => STATS.find((s) => s.id === stat) || STATS[0], [stat]);
+  const statLabel = useMemo(() => STATS.find((s) => s.id === stat) || STATS[0] || { label: '—' }, [stat, STATS]);
 
   const handleSearchChange = (e) => {
     const v = e.target.value;
@@ -133,7 +165,7 @@ export default function ExplorePage() {
   return (
     <div className="mx-auto max-w-[1536px] space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Stats Explorer</h1>
+        <h1 className="text-3xl font-bold">{sportLabel} Stats Explorer</h1>
         <p className="text-sm text-slate-400">Season leaderboards, recaps, and head-to-head comparisons from historical data.</p>
       </div>
 
@@ -150,7 +182,7 @@ export default function ExplorePage() {
               <div key={c.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <div className="text-xs uppercase tracking-wide text-slate-500">{c.label}</div>
                 {r ? (
-                  <Link to={`/players/${r.player_id}`} className="mt-2 flex items-center gap-3 hover:text-cyan-300">
+                  <Link to={`/${sport}/players/${r.player_id}`} className="mt-2 flex items-center gap-3 hover:text-cyan-300">
                     {r.headshot_url && <img src={r.headshot_url} alt="" className="h-10 w-10 rounded-full bg-slate-800 object-cover" />}
                     <div>
                       <div className="font-semibold text-slate-100">{r.full_name}</div>
@@ -211,7 +243,7 @@ export default function ExplorePage() {
                     <tr key={r.player_id} className="border-t border-slate-800/70 hover:bg-slate-800/30">
                       <td className="px-4 py-2.5 font-mono text-slate-500">{i + 1}</td>
                       <td className="px-2 py-2.5">
-                        <Link to={`/players/${r.player_id}`} className="flex items-center gap-3 font-medium text-slate-100 hover:text-cyan-300">
+                        <Link to={`/${sport}/players/${r.player_id}`} className="flex items-center gap-3 font-medium text-slate-100 hover:text-cyan-300">
                           {r.headshot_url && <img src={r.headshot_url} alt="" className="h-8 w-8 rounded-full bg-slate-800 object-cover" />}
                           {r.full_name}
                         </Link>
@@ -244,7 +276,7 @@ export default function ExplorePage() {
               {[a, b].map((c, idx) =>
                 c ? (
                   <div key={c.player.player_id} className={idx === 1 ? 'order-3' : 'order-1'}>
-                    <Link to={`/players/${c.player.player_id}`} className="flex flex-col items-center gap-2 hover:text-cyan-300">
+                    <Link to={`/${sport}/players/${c.player.player_id}`} className="flex flex-col items-center gap-2 hover:text-cyan-300">
                       {c.player.headshot_url && <img src={c.player.headshot_url} alt="" className="h-14 w-14 rounded-full bg-slate-800 object-cover" />}
                       <span className="font-semibold text-slate-100">{c.player.full_name}</span>
                       <span className="text-xs text-slate-500">{c.avgs?.season || ''}</span>

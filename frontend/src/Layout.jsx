@@ -104,7 +104,10 @@ export default function Layout() {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        const [playersRes, teamsRes] = await Promise.all([api.get('/players'), api.get('/teams')]);
+        const [playersRes, teamsRes] = await Promise.all([
+          api.get('/players', { params: { sport } }),
+          api.get('/teams'),
+        ]);
         setAllPlayers(playersRes.data);
         setAllTeams(teamsRes.data);
       } catch (error) {
@@ -114,7 +117,7 @@ export default function Layout() {
       }
     };
     fetchInitialData();
-  }, []);
+  }, [sport]);
 
   // Games for every sport. /bets/:sport/games is backed by the Odds API's
   // /events endpoint, which costs 0 credits, so fetching all three is free.

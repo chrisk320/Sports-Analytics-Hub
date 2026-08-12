@@ -38,7 +38,7 @@ export default function HomePage() {
     clearSlip,
   } = useOutletContext();
 
-  const { sport, label } = useSport();
+  const { sport, label, recentWindow } = useSport();
 
   const isOffseason = seasonStatus && !seasonStatus.inSeason;
 
@@ -75,13 +75,13 @@ export default function HomePage() {
     if (!isOffseason) return;
     let active = true;
     api
-      .get('/players/leaderboard', { params: { stat: 'pts', limit: 5 } })
+      .get('/players/leaderboard', { params: { sport, limit: 5 } })
       .then((res) => active && setTopScorers(res.data || []))
       .catch((err) => console.error('Failed to fetch leaderboard preview:', err));
     return () => {
       active = false;
     };
-  }, [isOffseason]);
+  }, [isOffseason, sport]);
 
   // Fetch game logs for each watchlist player (for sparklines + hit rate).
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function HomePage() {
     selectedPlayers.forEach(async (p) => {
       if (logsByPlayerId[p.player_id]) return;
       try {
-        const res = await api.get(`/players/${p.player_id}/full-gamelogs`);
+        const res = await api.get(`/players/${p.player_id}/full-gamelogs`, { params: { limit: recentWindow } });
         if (!cancelled) setLogsByPlayerId((prev) => ({ ...prev, [p.player_id]: res.data || [] }));
       } catch {
         if (!cancelled) setLogsByPlayerId((prev) => ({ ...prev, [p.player_id]: [] }));
@@ -98,7 +98,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedPlayers, logsByPlayerId]);
+  }, [selectedPlayers, logsByPlayerId, recentWindow]);
 
   const propsByPlayerId = useMemo(() => {
     const m = new Map();

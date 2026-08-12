@@ -113,10 +113,16 @@ export const marketLabel = (sport, marketId) => marketDef(sport, marketId)?.labe
 export function marketsForRole(sport, role) {
   const { order, markets } = marketsFor(sport);
   if (!role) return order;
-  return order.filter((id) => {
+  const applicable = order.filter((id) => {
     const roles = markets[id]?.roles;
     return !roles || roles.includes(role);
   });
+  // A role no market claims still gets the full list rather than an empty one.
+  // These are real players who produced real stats — a punter who completed a
+  // pass on a fake, a tackle credited with a trick-play reception. `roles` says
+  // which positions *typically* fill a market, so treating it as a hard filter
+  // here would blank out the page of the one player it should be showing.
+  return applicable.length ? applicable : order;
 }
 
 /**
