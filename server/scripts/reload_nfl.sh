@@ -12,25 +12,38 @@
 # Scoped to sport='nfl' throughout. NBA rows are counted before and after so a
 # mistake in that scoping is impossible to miss.
 #
-# Reads DATABASE_URL from server/.env. Point that at whichever database you
-# mean to touch before running — this deletes rows.
+# The target database must be named explicitly — there is no default. This
+# script deletes rows, and server/.env holds both a production URL and a test
+# branch URL under similar names; defaulting to either one is how you reload
+# the wrong database at 1am.
 set -euo pipefail
 
 SEASON="${1:-}"
-if [[ -z "$SEASON" ]]; then
-  echo "Usage: $0 <season>   e.g. $0 2024" >&2
+DB_VAR="${2:-}"
+if [[ -z "$SEASON" || -z "$DB_VAR" ]]; then
+  cat >&2 <<USAGE
+Usage: $0 <season> <ENV_VAR_HOLDING_THE_URL>
+
+  $0 2024 MIGRATION_TEST_DATABASE_URL   # Neon test branch
+  $0 2024 DATABASE_URL                  # production
+
+Naming the variable is required so that the database you are about to
+delete NFL rows from is a decision, not a default.
+USAGE
   exit 1
 fi
 
 cd "$(dirname "$0")/.."
 
-psql_url=$(grep -E '^DATABASE_URL=' .env | head -1 | cut -d= -f2- | tr -d '"'"'"'')
+psql_url=$(grep -E "^${DB_VAR}=" .env | head -1 | cut -d= -f2- | tr -d '"'"'"'')
 if [[ -z "$psql_url" ]]; then
-  echo "No DATABASE_URL in server/.env" >&2
+  echo "No ${DB_VAR} in server/.env" >&2
   exit 1
 fi
 
-echo "Target: $(psql "$psql_url" -tAc 'SELECT current_database()')"
+# Show host and database, not the URL — it carries a password.
+echo "Target: $(psql "$psql_url" -tAc \
+  "SELECT current_database() || ' @ ' || COALESCE(host(inet_server_addr()), 'local')") [\$${DB_VAR}]"
 echo
 echo "Before:"
 psql "$psql_url" -c "
@@ -39,7 +52,7 @@ psql "$psql_url" -c "
          (SELECT count(*) FROM player_game_logs g WHERE g.sport = p.sport) AS logs
   FROM players p GROUP BY p.sport ORDER BY p.sport;"
 
-read -r -p "Delete ALL sport='nfl' rows and reload season $SEASON? [y/N] " ok
+read -r -p "Delete ALL sport='nfl' rows from \$${DB_VAR} and reload season $SEASON? [y/N] " ok
 [[ "$ok" == "y" || "$ok" == "Y" ]] || { echo "Aborted."; exit 1; }
 
 # Logs first: player_game_logs.player_id references players.
@@ -54,7 +67,11 @@ echo "Reloading season $SEASON..."
 cd python_scripts
 # shellcheck disable=SC1091
 source venv/bin/activate
-python fetch_nfl_stats.py --season "$SEASON"
+# The loader reads DATABASE_URL. Pass the chosen URL through explicitly, or the
+# delete and the reload would target different databases whenever DB_VAR is not
+# DATABASE_URL. python-dotenv does not override variables already in the
+# environment, so this wins over the .env entry.
+DATABASE_URL="$psql_url" python fetch_nfl_stats.py --season "$SEASON"
 cd ..
 
 echo
