@@ -30,6 +30,19 @@ STAT_COLUMNS = [
     "fantasy_points_ppr",
 ]
 
+# The subset of STAT_COLUMNS that actually backs a prop market. Used to decide
+# whether a player is worth loading at all.
+#
+# Deliberately excludes completions/attempts/carries/targets/fantasy_points:
+# those are volume and context, not markets. A cornerback thrown at once all
+# season registers a target and nothing else — counting that as production put
+# him in player search with a page that has nothing on it.
+MARKET_COLUMNS = [
+    "passing_yards", "passing_tds",
+    "rushing_yards", "rushing_tds",
+    "receptions", "receiving_yards", "receiving_tds",
+]
+
 # Identity/context columns needed to build a game-log row.
 META_COLUMNS = [
     "player_id", "player_display_name", "player_name", "position",
@@ -78,7 +91,11 @@ def _offensive_producers_only(df):
     Anyone with at least one non-zero week keeps their whole season — including
     the lineman who caught a trick-play touchdown, which is correct.
     """
-    produced = df.groupby("player_id")[STAT_COLUMNS].max().sum(axis=1) > 0
+    per_player_max = df.groupby("player_id")[MARKET_COLUMNS].max()
+    # `.any(axis=1)` rather than summing the row: summing lets a negative week
+    # cancel a real one, so a quarterback with 50 passing yards and a -60 yard
+    # kneel-down week would net out to "produced nothing".
+    produced = (per_player_max > 0).any(axis=1)
     return df[df["player_id"].isin(produced[produced].index)]
 
 
