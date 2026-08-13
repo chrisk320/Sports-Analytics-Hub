@@ -1,5 +1,4 @@
 import pg from 'pg';
-import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -21,166 +20,15 @@ function getTodaysDateRange() {
     };
 }
 
-// Fetch NBA event IDs from Odds API
-async function fetchNBAEvents() {
-    const today = new Date();
-    const startDate = today.toISOString().split('.')[0] + 'Z';
-    const endDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('.')[0] + 'Z';
+// NOTE: the write path used to live here as refreshPlayerProps, a public
+// unauthenticated POST that looped every game and called the Odds API per
+// event -- 6 markets x 2 regions = 12 credits a game, roughly 120 credits for
+// one HTTP request against a 500-credit monthly tier. Nothing called it; the
+// scheduled loader in python_scripts/fetch_player_props.py does this job.
+// Deleted rather than guarded, on the same reasoning that removed the two
+// fan-out handlers in nbabets/nflbets: an endpoint that cannot be reached
+// cannot be abused. This file is now read-only.
 
-    const response = await axios.get(`https://api.the-odds-api.com/v4/sports/basketball_nba/events`, {
-        params: {
-            apiKey: process.env.ODDS_API_KEY,
-            dateFormat: 'iso',
-            commenceTimeFrom: startDate,
-            commenceTimeTo: endDate
-        }
-    });
-    return response.data;
-}
-
-// Fetch player props for a specific event
-async function fetchPropsForEvent(eventId) {
-    const response = await axios.get(`https://api.the-odds-api.com/v4/sports/basketball_nba/events/${eventId}/odds/`, {
-        params: {
-            apiKey: process.env.ODDS_API_KEY,
-            regions: 'us,us2',
-            markets: 'player_points,player_rebounds,player_assists,player_points_rebounds,player_points_assists,player_rebounds_assists',
-            bookmakers: 'draftkings,fanduel,betmgm,betus,fanatics,espnbet',
-            oddsFormat: 'american',
-            dateFormat: 'iso',
-        }
-    });
-    return response.data;
-}
-
-// Link player name to player_id using case-insensitive matching
-async function linkPlayerNameToId(playerName) {
-    const query = `
-        SELECT player_id FROM players
-        WHERE LOWER(full_name) = LOWER($1)
-        LIMIT 1;
-    `;
-    const result = await pool.query(query, [playerName]);
-    return result.rows.length > 0 ? result.rows[0].player_id : null;
-}
-
-// Store props in database
-async function storePlayerProp(prop) {
-    const query = `
-        INSERT INTO player_props (
-            player_name, player_id, game_id, game_date, home_team, away_team,
-            market, bookmaker, over_line, over_odds, under_line, under_odds, fetched_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW());
-        -- Append-only: each fetch is a snapshot, not a correction to the last
-        -- one. The ON CONFLICT that used to live here would now fail outright
-        -- anyway -- the unique constraint it named was dropped so that several
-        -- snapshots of the same prop can coexist.
-    `;
-
-    await pool.query(query, [
-        prop.player_name,
-        prop.player_id,
-        prop.game_id,
-        prop.game_date,
-        prop.home_team,
-        prop.away_team,
-        prop.market,
-        prop.bookmaker,
-        prop.over_line,
-        prop.over_odds,
-        prop.under_line,
-        prop.under_odds
-    ]);
-}
-
-// Fetch and store all player props (called by cron/manual trigger)
-export const refreshPlayerProps = async (req, res) => {
-    console.log('Starting player props refresh...');
-
-    try {
-        // Deliberately does NOT delete yesterday's props. They are the line
-        // history that the append-only change exists to keep; aging them out is
-        // the loader's compact_old_props(), which keeps the closing line.
-
-        // Fetch all NBA events
-        const events = await fetchNBAEvents();
-        console.log(`Found ${events.length} NBA games`);
-
-        let totalProps = 0;
-
-        for (const event of events) {
-            // Date the game by its US Eastern calendar day, not the UTC day — a
-            // game tipping 8pm ET is already past midnight UTC, which would push
-            // it to "tomorrow". en-CA formats as YYYY-MM-DD.
-            const gameDate = new Date(event.commence_time).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-
-            try {
-                const propsData = await fetchPropsForEvent(event.id);
-
-                if (!propsData.bookmakers) continue;
-
-                for (const bookmaker of propsData.bookmakers) {
-                    for (const market of bookmaker.markets || []) {
-                        // Group outcomes by player
-                        const playerOutcomes = {};
-
-                        for (const outcome of market.outcomes || []) {
-                            const playerName = outcome.description;
-                            if (!playerOutcomes[playerName]) {
-                                playerOutcomes[playerName] = { over: null, under: null };
-                            }
-                            if (outcome.name === 'Over') {
-                                playerOutcomes[playerName].over = outcome;
-                            } else if (outcome.name === 'Under') {
-                                playerOutcomes[playerName].under = outcome;
-                            }
-                        }
-
-                        // Store each player's props
-                        for (const [playerName, outcomes] of Object.entries(playerOutcomes)) {
-                            const playerId = await linkPlayerNameToId(playerName);
-
-                            await storePlayerProp({
-                                player_name: playerName,
-                                player_id: playerId,
-                                game_id: event.id,
-                                game_date: gameDate,
-                                home_team: event.home_team,
-                                away_team: event.away_team,
-                                market: market.key,
-                                bookmaker: bookmaker.key,
-                                over_line: outcomes.over?.point || null,
-                                over_odds: outcomes.over?.price || null,
-                                under_line: outcomes.under?.point || null,
-                                under_odds: outcomes.under?.price || null
-                            });
-                            totalProps++;
-                        }
-                    }
-                }
-
-                // Add small delay to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-            } catch (eventError) {
-                console.error(`Error fetching props for event ${event.id}:`, eventError.message);
-            }
-        }
-
-        console.log(`Stored ${totalProps} player prop entries`);
-        res.json({ success: true, propsStored: totalProps });
-
-    } catch (error) {
-        console.error('Error refreshing player props:', error);
-        res.status(500).json({ error: 'Failed to refresh player props' });
-    }
-};
-
-// Get every player prop for the current slate (for Home dashboard + Compare).
-// "Current slate" = the nearest game day on/after today in US Eastern (the NBA's
-// reference tz). This populates the dashboard on off-days (shows the next slate)
-// and surfaces tonight's games even when their game_date was derived in UTC.
-// Joined with players for full_name + headshot_url so the UI can render cards.
 export const getTodaysProps = async (req, res) => {
     try {
         const query = `

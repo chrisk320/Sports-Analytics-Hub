@@ -1,0 +1,109 @@
+name: CI
+
+# Gates every push and PR on the checks that were previously only run by hand.
+# The 117 Vitest cases cover lib/odds.js, compare.js, teamLines.js and
+# markets.js -- the de-vig, EV and hit-rate math. That math IS the product: a
+# silent error there does not crash anything, it produces confidently wrong
+# betting advice. Tests nobody runs are not a safety net, which is what makes
+# this workflow the point of having written them.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch cancels the first. Nothing here touches
+# shared state, so an in-flight run of stale code is only wasted minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend — lint, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # `npm ci` rather than `npm install`: it installs exactly the lockfile and
+      # fails if package.json and the lock have drifted, which is a real bug
+      # worth catching rather than silently resolving.
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npx vitest run
+
+      # The build catches what lint and unit tests cannot -- an unresolved
+      # import or a JSX error in a component with no test coverage.
+      - run: npm run build
+
+  backend:
+    name: Backend — syntax and migrations
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # Skips puppeteer's ~200MB Chromium download; nothing in CI runs a browser.
+      - run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+      # There is no backend test suite yet, so this is a parse check across
+      # every source file. It is genuinely load-bearing: these are ES modules
+      # imported at boot, so a syntax error here takes the whole service down on
+      # deploy, and there is no unit test that would have caught it.
+      - name: Parse every backend module
+        # Prunes node_modules, the python venv and build output. The venv
+        # matters specifically: selenium vendors JS fragments that are not
+        # valid standalone modules, so sweeping it fails on files this repo
+        # neither wrote nor loads.
+        run: |
+          find . \
+            \( -name node_modules -o -name venv -o -name dist \) -prune -o \
+            -name '*.js' -print0 \
+            | xargs -0 -n1 node --check
+
+      # Migrations run against a throwaway Postgres, which verifies that they
+      # apply to an empty database AND that every down migration reverses its
+      # up. Neither is checked anywhere else, and a broken down migration is
+      # only discovered when you urgently need to roll back.
+      - name: Migrations apply and reverse
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/citest
+        run: |
+          npm run migrate:deploy
+          npx node-pg-migrate --database-url-var DATABASE_URL down 0
+          npm run migrate:deploy
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: citest
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5

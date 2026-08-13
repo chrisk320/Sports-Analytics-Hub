@@ -26,4 +26,23 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // react-refresh/only-export-components flags a file that exports anything
+    // besides components, because it costs hot-reload granularity. In these two
+    // places the mixed export is the intended design, not an oversight:
+    //
+    //   components/ui/*  vendored shadcn primitives, which ship exporting their
+    //                    variant helpers (buttonVariants) as public API. These
+    //                    are regenerated, not hand-edited.
+    //   context/*        a provider and its consumer hook belong in one file;
+    //                    splitting useSport() away from SportProvider to please
+    //                    a hot-reload heuristic makes the code worse.
+    //
+    // Scoped off here rather than left failing, so `npm run lint` is a signal
+    // CI can gate on instead of three errors everyone learns to ignore.
+    files: ['src/components/ui/**/*.jsx', 'src/context/**/*.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
