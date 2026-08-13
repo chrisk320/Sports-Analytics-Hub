@@ -1,0 +1,107 @@
+name: NFL & MLB Stats Fetch
+
+# Keeps the non-NBA game logs current.
+#
+# WHY THESE TWO CAN RUN HERE AND NBA CANNOT: Basketball Reference returns 403 to
+# GitHub's datacenter IPs, so that scrape stays on a local cron with a
+# residential IP (see nba-data-fetch.yml). nflverse publishes static Parquet on
+# GitHub Releases and statsapi.mlb.com is the same public JSON API MLB.com's own
+# scoreboard calls — both are happy to serve a runner, so neither depends on the
+# dev machine being awake.
+#
+# Neither source is metered, so unlike props-fetch.yml there is no credit budget
+# to respect here.
+#
+# 11:00 UTC = 7am EDT / 6am EST. Late enough that every North American game from
+# the previous day has finished and been finalised, early enough that the day's
+# pages are current before anyone looks at them.
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      mlb_days:
+        description: 'How many past days of MLB to re-fetch (default 2)'
+        required: false
+        default: '2'
+      nfl_season:
+        description: 'NFL season to load (blank = skip NFL)'
+        required: false
+        default: ''
+
+jobs:
+  mlb:
+    name: MLB — yesterday's boxscores
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/python_scripts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: server/python_scripts/requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      # A short trailing window rather than just yesterday. Games suspended or
+      # finalised late would otherwise be missed permanently, and the loader
+      # upserts on (player_id, season, game_date, game_seq, role), so re-reading
+      # a day that is already loaded corrects it instead of duplicating it.
+      - name: Fetch recent MLB boxscores
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          DAYS="${{ github.event.inputs.mlb_days || '2' }}"
+          START=$(date -u -d "-${DAYS} days" +%Y-%m-%d)
+          END=$(date -u +%Y-%m-%d)
+          echo "Loading MLB $START .. $END"
+          python fetch_mlb_stats.py --start "$START" --end "$END"
+
+  nfl:
+    name: NFL — current season weeks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/python_scripts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: server/python_scripts/requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      # nflverse republishes the whole season file as weeks complete, and the
+      # loader upserts, so re-reading the season is the correct incremental
+      # update — there is no per-week endpoint to be clever about.
+      #
+      # Exits 0 when the season is not published yet. Out of season that is the
+      # normal state, and a red X every morning from September back to February
+      # trains you to ignore the one failure that matters.
+      - name: Fetch current NFL season
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          SEASON="${{ github.event.inputs.nfl_season }}"
+          if [ -z "$SEASON" ]; then
+            # NFL seasons are named for the year they start and the league year
+            # rolls over in March, so January and February belong to the season
+            # named for the previous calendar year.
+            Y=$(date -u +%Y); M=$(date -u +%m)
+            SEASON=$([ "$M" -le 2 ] && echo $((Y - 1)) || echo "$Y")
+          fi
+          if python -c "
+          import sys; sys.path.insert(0, '.')
+          from sources.nfl_source import season_available
+          sys.exit(0 if season_available('$SEASON') else 1)"; then
+            python fetch_nfl_stats.py --season "$SEASON"
+          else
+            echo "nflverse has not published season $SEASON yet — nothing to do."
+          fi
