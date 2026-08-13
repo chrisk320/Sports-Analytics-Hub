@@ -9,6 +9,8 @@ import { buildCompareRows, sortRows, bestBookToday, avgSavings, evCount } from '
 import MarketToggle from '../components/home/MarketToggle';
 import OffseasonBanner from '../components/OffseasonBanner';
 import { Panel } from '../components/ui/panel';
+import { FreshnessBadge } from '../components/ui/freshness-badge';
+import { freshness } from '../lib/freshness';
 import { Term } from '../components/ui/term';
 
 const POLL_MS = 60000;
@@ -125,7 +127,6 @@ export default function ComparePage() {
 
   const [props, setProps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(null);
 
   const [marketFilter, setMarketFilter] = useState('ALL');
   const [query, setQuery] = useState('');
@@ -139,7 +140,6 @@ export default function ComparePage() {
         const res = await api.get('/playerprops/today');
         if (active) {
           setProps(res.data || []);
-          setLastUpdated(new Date());
         }
       } catch (e) {
         console.error('Failed to fetch props:', e);
@@ -158,6 +158,9 @@ export default function ComparePage() {
   const books = selectedBooks?.length ? selectedBooks : DEFAULT_BOOKS;
   // Stable column order regardless of toggle order.
   const orderedBooks = useMemo(() => DEFAULT_BOOKS.filter((b) => books.includes(b)), [books]);
+
+  // From the odds themselves, not from when we asked for them.
+  const dataFreshness = useMemo(() => freshness(props), [props]);
 
   const allRows = useMemo(() => buildCompareRows(sport, props, books), [sport, props, books]);
 
@@ -202,12 +205,7 @@ export default function ComparePage() {
             For every prop, we surface the highest-paying book. Shop your lines — it's free money.
           </p>
         </div>
-        {lastUpdated && (
-          <span className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        )}
+        <FreshnessBadge freshness={dataFreshness} />
       </div>
 
       {/* Summary strip */}

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useOutletContext, useNavigate } from 'react-router-dom';
 import TeamCard from '../components/TeamCard';
 import OffseasonBanner from '../components/OffseasonBanner';
 import { useSport } from '@/context/SportContext';
+import { api } from '../lib/api';
 
 // The games list for whichever sport the route is on.
 //
@@ -15,6 +16,26 @@ export default function GamesPage() {
   const { sport, label } = useSport();
   const navigate = useNavigate();
 
+  // Which games actually have props. A DB read, not an Odds API call, so this
+  // costs nothing — and it is the difference between a card that leads to a
+  // full page and one that leads to team lines only.
+  const [propGameIds, setPropGameIds] = useState(null);
+  useEffect(() => {
+    let active = true;
+    api
+      .get('/playerprops/today')
+      .then((res) => active && setPropGameIds(new Set((res.data || []).map((r) => r.game_id))))
+      .catch(() => active && setPropGameIds(null));
+    return () => {
+      active = false;
+    };
+  }, [sport]);
+
+  // undefined while the lookup is in flight or failed, so the card renders no
+  // badge at all rather than claiming a game has no props when we simply do
+  // not know yet.
+  const hasProps = (gameId) => (propGameIds ? propGameIds.has(gameId) : undefined);
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <h2 className="text-3xl font-bold text-center">{label} Games</h2>
@@ -22,7 +43,12 @@ export default function GamesPage() {
       {games.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {games.map((game) => (
-            <TeamCard key={game.id} game={game} onSelect={(g) => navigate(`/${sport}/games/${g.id}`)} />
+            <TeamCard
+              key={game.id}
+              game={game}
+              hasProps={hasProps(game.id)}
+              onSelect={(g) => navigate(`/${sport}/games/${g.id}`)}
+            />
           ))}
         </div>
       ) : (

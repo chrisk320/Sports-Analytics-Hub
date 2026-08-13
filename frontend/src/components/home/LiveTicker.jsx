@@ -1,10 +1,11 @@
 import React from 'react';
 import { formatOdds, bookLabel } from '../../lib/odds';
+import { FreshnessBadge } from '../ui/freshness-badge';
 import { marketLabel } from '../../lib/markets';
 import { useSport } from '@/context/SportContext';
 
 // Single-line scrolling strip of the slate's best price edges.
-export default function LiveTicker({ edges = [], lastUpdated }) {
+export default function LiveTicker({ edges = [], freshness }) {
   const { sport } = useSport();
   const items = edges.filter((e) => e.savings > 0).slice(0, 20);
   // Duplicate the list so the marquee can loop seamlessly (-50% translate).
@@ -35,11 +36,7 @@ export default function LiveTicker({ edges = [], lastUpdated }) {
         )}
       </div>
 
-      {lastUpdated && (
-        <span className="shrink-0 px-3 text-xs text-slate-600">
-          updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
-      )}
+      <FreshnessBadge freshness={freshness} className="shrink-0 px-3" />
     </div>
   );
 }

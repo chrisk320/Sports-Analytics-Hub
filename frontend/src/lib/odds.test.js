@@ -121,6 +121,21 @@ describe('savingsPer100', () => {
     expect(savingsPer100([-110, -110])).toBe(0);
     expect(savingsPer100([-110])).toBe(0);
   });
+
+  // Regression: American odds are not a linear scale. An even split around even
+  // money used to average to 0, and payoutPer100(0) is 10000 / -0 = -Infinity,
+  // so the saving came out as +Infinity and reached the alerts feed as
+  // "+$Infinity/100". The median has to be taken over payouts.
+  it('handles books split either side of even money', () => {
+    const s = savingsPer100([160, -160]);
+    expect(Number.isFinite(s)).toBe(true);
+    expect(s).toBeCloseTo(48.75, 2); // best 160 vs median payout (160 + 62.5)/2
+  });
+
+  it('never returns Infinity for any mix of prices', () => {
+    const mixes = [[100, -100], [110, -110, 120, -120], [-100, 100, -105, 105], [0, 100]];
+    for (const m of mixes) expect(Number.isFinite(savingsPer100(m))).toBe(true);
+  });
 });
 
 describe('evPercent', () => {

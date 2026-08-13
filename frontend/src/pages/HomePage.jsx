@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { freshness } from '../lib/freshness';
 import { computeEdges } from '../lib/odds';
 import { useSport } from '@/context/SportContext';
 import SearchBar from '../components/SearchBar';
@@ -43,9 +44,13 @@ export default function HomePage() {
   const isOffseason = seasonStatus && !seasonStatus.inSeason;
 
   const [todaysProps, setTodaysProps] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(null);
   const [logsByPlayerId, setLogsByPlayerId] = useState({});
+
   const [topScorers, setTopScorers] = useState([]);
+
+  // Freshness comes from the odds' own fetched_at, not from when this component
+  // last called the API — those diverge exactly when the pipeline breaks.
+  const dataFreshness = useMemo(() => freshness(todaysProps), [todaysProps]);
 
   // Poll tonight's slate of props (skip in the offseason — nothing to fetch).
   useEffect(() => {
@@ -56,7 +61,6 @@ export default function HomePage() {
         const res = await api.get('/playerprops/today');
         if (active) {
           setTodaysProps(res.data || []);
-          setLastUpdated(new Date());
         }
       } catch (err) {
         console.error("Failed to fetch today's props:", err);
@@ -197,7 +201,7 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto max-w-[1536px] space-y-6">
-      <LiveTicker edges={edges} lastUpdated={lastUpdated} />
+      <LiveTicker edges={edges} freshness={dataFreshness} />
 
       {/* Title + search + market toggle */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -248,7 +252,7 @@ export default function HomePage() {
         </div>
 
         <div className="space-y-6 xl:w-[320px] xl:shrink-0">
-          <AlertsFeed edges={edges} gameCount={games.length} lastUpdated={lastUpdated} />
+          <AlertsFeed edges={edges} gameCount={games.length} freshness={dataFreshness} />
           <SlipCard slip={slip} onRemove={removeFromSlip} onClear={clearSlip} />
         </div>
       </div>

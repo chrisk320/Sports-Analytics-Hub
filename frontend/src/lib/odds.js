@@ -31,7 +31,10 @@ export function decimalToAmerican(dec) {
 
 // Profit on a $100 stake at the given American price.
 export function payoutPer100(odds) {
-  if (odds == null || isNaN(odds)) return null;
+  // 0 is not a valid American price -- the scale runs +100..inf and -100..-inf
+  // with nothing between. Letting it through yields 10000 / -0 = -Infinity,
+  // which then propagates into savings as +Infinity.
+  if (odds == null || isNaN(odds) || odds === 0) return null;
   return odds > 0 ? odds : 10000 / -odds;
 }
 
@@ -58,10 +61,17 @@ export function median(nums) {
 }
 
 // Dollars saved per $100 by taking the best price vs the median price.
+//
+// The median is taken over PAYOUTS, not over the American odds themselves.
+// American odds are not a continuous scale: +100 and -100 are adjacent prices
+// (both 2.0 decimal), but their numeric mean is 0 -- which is not a price at
+// all, and payoutPer100(0) is 10000 / -0 = -Infinity. An even number of books
+// split either side of even money therefore produced a median of 0 and a saving
+// of +Infinity, which reached the alerts feed as "+$Infinity/100".
 export function savingsPer100(oddsList) {
-  const valid = oddsList.filter((o) => o != null && !isNaN(o));
-  if (valid.length < 2) return 0;
-  const s = payoutPer100(bestOdds(valid)) - payoutPer100(median(valid));
+  const payouts = oddsList.map(payoutPer100).filter((p) => p != null && Number.isFinite(p));
+  if (payouts.length < 2) return 0;
+  const s = Math.max(...payouts) - median(payouts);
   return s > 0 ? s : 0;
 }
 

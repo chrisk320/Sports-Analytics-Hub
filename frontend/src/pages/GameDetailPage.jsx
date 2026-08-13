@@ -6,6 +6,8 @@ import { parseTeamLines, buildTeamMarkets } from '../lib/teamLines';
 import { matchKalshiEvent, buildKalshiMarket } from '../lib/kalshi';
 import TeamMarketCard from '../components/game/TeamMarketCard';
 import TeamPropsTable from '../components/game/TeamPropsTable';
+import { FreshnessBadge } from '../components/ui/freshness-badge';
+import { freshness } from '../lib/freshness';
 import KalshiMarketCard from '../components/game/KalshiMarketCard';
 import { useSport } from '@/context/SportContext';
 
@@ -17,6 +19,7 @@ export default function GameDetailPage() {
   const [loading, setLoading] = useState(true);
   const [parsed, setParsed] = useState(null);
   const [props, setProps] = useState([]);
+  const propsFreshness = useMemo(() => freshness(props), [props]);
   const [kalshiData, setKalshiData] = useState(null);
 
   useEffect(() => {
@@ -153,11 +156,26 @@ export default function GameDetailPage() {
 
       {/* Player props split by team */}
       <div>
-        <h2 className="mb-3 text-lg font-bold text-slate-50">Player props</h2>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <TeamPropsTable teamName={meta.away} teamAbbr={awayAbbr} players={awayPlayers} />
-          <TeamPropsTable teamName={meta.home} teamAbbr={homeAbbr} players={homePlayers} />
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-slate-50">Player props</h2>
+          <FreshnessBadge freshness={propsFreshness} />
         </div>
+        {props.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TeamPropsTable teamName={meta.away} teamAbbr={awayAbbr} players={awayPlayers} />
+            <TeamPropsTable teamName={meta.home} teamAbbr={homeAbbr} players={homePlayers} />
+          </div>
+        ) : (
+          // Props are fetched for a sampled subset of each slate, so most games
+          // genuinely have none. Saying so beats rendering two empty tables,
+          // which reads as a broken page rather than a covered/uncovered game.
+          <div className="rounded-xl border-2 border-dashed border-slate-700 px-4 py-10 text-center">
+            <p className="text-slate-300">No player props posted for this game.</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Prop coverage is limited to a few games a day. Team lines above are live for every game.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -209,13 +209,19 @@ const INSERT_SQL = `
 // values for three runs of 359 rows. A snapshot is a run, so the rows in it
 // have to share an instant: otherwise "lines as of 7:04pm" has no single answer
 // and line movement cannot group a run's rows together.
-// Stored as a UTC wall-clock string, NOT a JS Date. `fetched_at` is
-// `timestamp without time zone`, and node-pg serialises a Date in LOCAL time --
-// which wrote 15:28 PDT into a column every other writer fills with UTC via
-// NOW(). That is not a cosmetic seven-hour error: player_props_latest picks a
-// row with ORDER BY fetched_at DESC, so a fresh run would sort BELOW older rows
-// and the view would start serving stale lines.
-const RUN_AT = new Date().toISOString().replace('T', ' ').replace('Z', '');
+// One timestamp for the whole run, captured before the first fetch.
+//
+// A plain Date is correct now that fetched_at is timestamptz (migration
+// 1735690300000): node-pg sends it with an offset and Postgres stores the
+// instant. It was NOT correct against the previous `timestamp without time
+// zone` column, where node-pg serialised in local time and stamped rows seven
+// hours off.
+//
+// Per-run rather than per-row because NOW() outside a transaction is evaluated
+// per statement -- that produced 1,077 distinct timestamps for three runs of
+// 359 rows. A snapshot is a run, so its rows have to share an instant, or
+// "lines as of" has no single answer and line movement cannot group them.
+const RUN_AT = new Date();
 
 const FULL_HISTORY_DAYS = 14;
 const CLOSING_LINE_DAYS = 365;

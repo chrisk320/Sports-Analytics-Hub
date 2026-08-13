@@ -20,11 +20,11 @@ function Tag({ kind }) {
 
 // Derived feed — BEST/EDGE signals from current prices + a STATUS line.
 // True line-move/injury alerts need data we don't store yet (see plan).
-export default function AlertsFeed({ edges = [], gameCount = 0, lastUpdated }) {
+export default function AlertsFeed({ edges = [], gameCount = 0, freshness = null }) {
   const { sport } = useSport();
-  const stamp = lastUpdated
-    ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '';
+  // The odds' own timestamp, so a stalled pipeline shows here as an age
+  // rather than as a reassuring clock reading.
+  const stamp = freshness ? (freshness.stale ? `stale, ${freshness.age}` : freshness.label) : '';
 
   const top = edges.filter((e) => e.savings > 0).slice(0, 8);
 

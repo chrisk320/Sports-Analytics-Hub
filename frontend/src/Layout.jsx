@@ -6,7 +6,7 @@ import { DEFAULT_BOOKS } from './lib/odds';
 import Header from './components/Header';
 import ChatBot from './components/ChatBot';
 import { SportProvider } from './context/SportContext';
-import { SPORTS, DEFAULT_SPORT, isSport } from './lib/markets';
+import { SPORTS, DEFAULT_SPORT, isSport, marketsFor } from './lib/markets';
 
 export default function Layout() {
   // The sport for this whole subtree, from the /:sport route segment.
@@ -50,7 +50,12 @@ export default function Layout() {
   // Betting / watchlist UI state (shared with pages via Outlet context)
   const [pinnedPlayerId, setPinnedPlayerId] = useState(null);
   const [hoveredPlayerId, setHoveredPlayerId] = useState(null);
-  const [watchlistMarket, setWatchlistMarket] = useState('PTS');
+  // Seeded from the sport's own default, not a hardcoded 'PTS' -- that market
+  // does not exist outside basketball, so the market-depth panel rendered a
+  // header reading "PTS" on MLB and NFL pages with nothing beneath it.
+  const [watchlistMarket, setWatchlistMarket] = useState(
+    () => marketsFor(sport || DEFAULT_SPORT).defaultMarket
+  );
   const [selectedBooks, setSelectedBooks] = useState(DEFAULT_BOOKS);
   const [slip, setSlip] = useState(() => {
     try {
@@ -68,6 +73,12 @@ export default function Layout() {
   useEffect(() => {
     localStorage.setItem('slip', JSON.stringify(slip));
   }, [slip]);
+
+  // Switching sports has to reset the market too: PTS is meaningless on an MLB
+  // page, and the panels below key off this value.
+  useEffect(() => {
+    if (sport) setWatchlistMarket(marketsFor(sport).defaultMarket);
+  }, [sport]);
 
   // Sport is part of the key: player ids are only unique WITHIN a sport, so an
   // NBA player 23 and an MLB player 23 would otherwise collide in the slip.
