@@ -68,8 +68,12 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
-      # There is no backend test suite yet, so this is a parse check across
-      # every source file. It is genuinely load-bearing: these are ES modules
+      # The betting math the server owns -- settling props, profit, closing-line
+      # value -- has the same property as the frontend's: an error does not
+      # crash anything, it reports money that was never won.
+      - run: npm test
+
+      # A parse check across every source file, complementing the tests above. It is genuinely load-bearing: these are ES modules
       # imported at boot, so a syntax error here takes the whole service down on
       # deploy, and there is no unit test that would have caught it.
       - name: Parse every backend module

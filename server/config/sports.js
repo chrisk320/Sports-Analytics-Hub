@@ -43,6 +43,17 @@ export const SPORTS = {
       'player_points_assists',
       'player_rebounds_assists',
     ],
+    // Which stat keys settle each prop market. Grading joins a prop to the
+    // player's game log and sums these out of the stats JSONB, so a combo
+    // market like points+rebounds lists both.
+    propStats: {
+      player_points: ['pts'],
+      player_rebounds: ['reb'],
+      player_assists: ['ast'],
+      player_points_rebounds: ['pts', 'reb'],
+      player_points_assists: ['pts', 'ast'],
+      player_rebounds_assists: ['reb', 'ast'],
+    },
     // Futures are SEPARATE Odds API sport keys, not markets on the main key.
     // Verify against GET /v4/sports/?apiKey=... which lists the active ones.
     futures: {
@@ -77,6 +88,17 @@ export const SPORTS = {
       'player_reception_yds',
       'player_anytime_td',
     ],
+    propStats: {
+      player_pass_yds: ['passing_yards'],
+      player_pass_tds: ['passing_tds'],
+      player_rush_yds: ['rushing_yards'],
+      player_receptions: ['receptions'],
+      player_reception_yds: ['receiving_yards'],
+      // Anytime TD has no line; it settles on whether ANY touchdown was
+      // scored, so the loader stores it as over 0.5 and the sum across the
+      // three scoring columns grades it correctly.
+      player_anytime_td: ['rushing_tds', 'receiving_tds'],
+    },
     futures: {
       superbowl: 'americanfootball_nfl_super_bowl_winner',
     },
@@ -110,6 +132,15 @@ export const SPORTS = {
       'batter_total_bases',
       'pitcher_strikeouts',
     ],
+    // Note pitcher_strikeouts reads the same 'strike_outs' key that a batter
+    // row uses for times struck out. They never collide because grading joins
+    // on the log whose role matches the market.
+    propStats: {
+      batter_home_runs: ['home_runs'],
+      batter_hits: ['hits'],
+      batter_total_bases: ['total_bases'],
+      pitcher_strikeouts: ['strike_outs'],
+    },
     futures: {
       worldseries: 'baseball_mlb_world_series_winner',
     },

@@ -9,6 +9,7 @@ import chat from './routes/chat.routes.js';
 import bets, { legacyBetsRouter } from './routes/bets.routes.js';
 import playerprops from './routes/playerprops.routes.js';
 import kalshi from './routes/kalshi.routes.js';
+import grades from './routes/grades.routes.js';
 import { getQuota } from './lib/oddsApi.js';
 import { sportIds } from './config/sports.js';
 dotenv.config()
@@ -52,6 +53,9 @@ app.use('/nflbets', oddsLimiter, legacyBetsRouter('nfl'));
 
 app.use('/playerprops', playerprops);
 app.use('/kalshi', oddsLimiter, kalshi);
+
+// Settled props. Database-only, so deliberately outside oddsLimiter.
+app.use('/grades', grades);
 
 // Cheap liveness + the Odds API credit budget, which nothing surfaced before.
 app.get('/health', (req, res) => {
