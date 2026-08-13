@@ -24,7 +24,7 @@ function getTodaysDateRange() {
 // unauthenticated POST that looped every game and called the Odds API per
 // event -- 6 markets x 2 regions = 12 credits a game, roughly 120 credits for
 // one HTTP request against a 500-credit monthly tier. Nothing called it; the
-// scheduled loader in python_scripts/fetch_player_props.py does this job.
+// scheduled loader in scripts/fetch_props.mjs does this job.
 // Deleted rather than guarded, on the same reasoning that removed the two
 // fan-out handlers in nbabets/nflbets: an endpoint that cannot be reached
 // cannot be abused. This file is now read-only.

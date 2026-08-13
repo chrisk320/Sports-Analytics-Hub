@@ -55,7 +55,7 @@ Two sources feed the database on a schedule:
 | `fetch_bref_advanced_stats.py` | Advanced metrics (ORtg/DRtg, TS%, eFG%, USG%) — `--yesterday` or a season year |
 | `fetch_bref_backfill.py` | Backfill any date range: `--start YYYY-MM-DD [--end ...]` (idempotent; reuses the daily logic — used for playoffs) |
 | `fetch_headshots.py` | Player headshot URLs (`nba_api`) |
-| `fetch_player_props.py` | Player props from The Odds API → `player_props` table |
+| `scripts/fetch_props.mjs` | Player props from The Odds API → `player_props` table (all in-season sports, budget-capped) |
 | `daily_fetch.sh` | Local cron entrypoint → runs `fetch_bref_all_stats.py --yesterday` |
 
 **Game-log scrape → local cron (not GitHub Actions).** Basketball Reference returns `403 Forbidden` to GitHub's datacenter IPs, so a cloud scraper fetches nothing. It runs from a residential IP via `cron` on the dev machine:
@@ -66,7 +66,7 @@ Two sources feed the database on a schedule:
 
 > Note: `--yesterday` fetches a single day, so if the machine is asleep at run time that day is skipped — use `fetch_bref_backfill.py --start <date>` to fill gaps.
 
-**Player props → GitHub Actions.** The Odds API is a keyed commercial API that accepts any IP (no 403), so props refresh in the cloud — which also means they don't depend on the dev machine being awake near tip-off. [`.github/workflows/props-fetch.yml`](.github/workflows/props-fetch.yml) runs `fetch_player_props.py` twice a day (plus a manual trigger), using the repo's `ODDS_API_KEY` and `DATABASE_URL` secrets:
+**Player props → GitHub Actions.** The Odds API is a keyed commercial API that accepts any IP (no 403), so props refresh in the cloud — which also means they don't depend on the dev machine being awake near tip-off. [`.github/workflows/props-fetch.yml`](.github/workflows/props-fetch.yml) runs `scripts/fetch_props.mjs` once a day (plus a manual trigger), using the repo's `ODDS_API_KEY` and `DATABASE_URL` secrets:
 
 ```cron
 0 20 * * *   # 4pm EDT / 3pm EST — lines posted for the slate
@@ -82,7 +82,7 @@ Two sources feed the database on a schedule:
 | `players` | Player master data + `headshot_url`, `team_abbreviation` |
 | `player_game_logs` | Game-by-game traditional stats (`pts`, `reb`, `ast`, `stl`, `blk`, `min`) |
 | `advanced_box_scores` | Per-game advanced metrics (1:1 with `player_game_logs`) |
-| `player_props` | Player prop lines/odds per book (populated by `fetch_player_props.py`) |
+| `player_props` | Append-only prop snapshots per book (populated by `scripts/fetch_props.mjs`); read current lines via the `player_props_latest` view |
 | `user_favorites` | Per-user saved players |
 | `teams` | NBA team names + abbreviations |
 
@@ -179,7 +179,8 @@ python fetch_bref_all_stats.py --yesterday
 python fetch_bref_backfill.py --start 2026-04-13 --end 2026-06-02
 
 # Props (needs ODDS_API_KEY)
-python fetch_player_props.py
+node ../scripts/fetch_props.mjs --dry-run   # plan + projected credit cost, spends nothing
+node ../scripts/fetch_props.mjs             # all in-season sports
 
 # NFL — nflverse Parquet, one season at a time
 python fetch_nfl_stats.py --season 2024

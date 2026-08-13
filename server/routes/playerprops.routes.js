@@ -16,7 +16,7 @@ router.get('/:playerId', getPlayerProps);
 router.get('/:playerId/game', getPlayerGameToday);
 
 // No write route. Props are loaded by the scheduled job in
-// python_scripts/fetch_player_props.py; the POST /refresh that used to sit here
+// scripts/fetch_props.mjs; the POST /refresh that used to sit here
 // was an unauthenticated Odds API fan-out worth ~120 credits per call.
 
 export default router;

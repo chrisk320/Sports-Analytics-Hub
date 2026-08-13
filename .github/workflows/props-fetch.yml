@@ -6,38 +6,46 @@ name: Player Props Fetch
 # IP, so this runs reliably in the cloud — and a cloud runner doesn't depend on
 # the dev machine being awake near tip-off.
 #
-# Schedule is UTC (GitHub does not adjust for DST), so ET times drift ~1h
-# between EDT and EST — fine for odds.
-#   20:00 UTC = 4pm EDT / 3pm EST  (afternoon: lines posted for the slate)
-#   23:00 UTC = 7pm EDT / 6pm EST  (evening: sharper lines near tip-off)
-# Each run consumes Odds API credits (~1 call per game), so keep the cadence
-# modest — drop one line below if you want a single daily pull.
+# ONE run per day, deliberately. Per-event prop calls cost markets x regions per
+# game and are the entire Odds API budget: a full MLB slate is ~15 games x 4
+# credits = 60/day against a 500/month tier. The script samples the most
+# competitive few games within a derived daily allowance, and a second daily run
+# would halve how many games each one can afford. Breadth of coverage matters
+# more right now than intraday line movement on a single game.
+#
+# 20:00 UTC = 4pm EDT / 3pm EST — lines are posted for the evening slate, and
+# books have not yet started moving them near lock. Schedule is UTC (GitHub does
+# not adjust for DST), so the ET time drifts ~1h between EDT and EST.
 on:
   schedule:
     - cron: '0 20 * * *'
-    - cron: '0 23 * * *'
   workflow_dispatch:  # Manual trigger
 
 jobs:
   fetch-player-props:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
 
-      - name: Install dependencies
-        run: |
-          cd server/python_scripts
-          pip install -r requirements.txt
+      # Skips puppeteer's Chromium download; this job never opens a browser.
+      - run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
 
+      # Runs every in-season sport. Which sports those are is decided by whether
+      # the free /events endpoint returns games, the same signal the UI uses for
+      # in-season — so the loader and the UI cannot disagree.
       - name: Fetch player props (The Odds API)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: |
-          cd server/python_scripts
-          python fetch_player_props.py
+        run: node scripts/fetch_props.mjs
