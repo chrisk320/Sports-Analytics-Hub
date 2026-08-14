@@ -6,7 +6,7 @@ dashboard that shops player props and team lines across sportsbooks, surfaces
 line-shopping savings and de-vigged +EV edges, shows market-aware player trends —
 and then **grades its own advice** against what actually happened.
 
-Roughly 87,000 game logs across 2,500 players, with prop lines stored
+Roughly 157,000 game logs across 2,800 players, with prop lines stored
 append-only so line movement and closing-line value survive.
 
 **Live Demo:** [sports-analytics-hub.vercel.app](https://sports-analytics-hub.vercel.app) · **API:** [Render backend](https://sports-analytics-hub-7hse.onrender.com)
@@ -127,13 +127,17 @@ which meant paying Odds API credits for a line and overwriting it within twelve
 hours. History past 14 days is compacted to the closing line only; past a year
 it is dropped.
 
-Production currently holds ~87k game logs:
+Production holds ~157k game logs across five sport-seasons:
 
-| Sport | Players | Game logs |
-|---|---|---|
-| NBA | 582 | 28,674 |
-| NFL | 728 | 12,098 (2024 + 2025) |
-| MLB | 1,378 | 52,427 |
+| Sport | Seasons | Players | Game logs |
+|---|---|---|---|
+| NBA | 2025-26 | 582 | 28,674 |
+| NFL | 2024, 2025 | 728 | 12,098 |
+| MLB | 2025, 2026 | 1,469 | 122,212 |
+
+Multiple seasons per sport are the point, not incidental: hit rates and trend
+charts are only meaningful with history behind them, and the leaderboard
+defaults to the most recent season while the season picker reaches the rest.
 
 ### 3. Backend API (Express.js · ES Modules)
 
@@ -275,7 +279,7 @@ python fetch_bref_backfill.py --start 2026-04-13 --end 2026-06-02
 python fetch_nfl_stats.py --season 2025
 
 # MLB — statsapi.mlb.com, a season or an explicit range
-python fetch_mlb_stats.py --season 2026
+python fetch_mlb_stats.py --season 2025   # ~2,400 games, roughly 40 minutes
 python fetch_mlb_stats.py --start 2026-08-01 --end 2026-08-10
 
 # Team name <-> abbreviation mapping (game pages join on it)
