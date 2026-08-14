@@ -1,6 +1,13 @@
 # Sports Analytics Hub
 
-A full-stack application for analyzing NBA player performance and sports-betting value. It pairs a Basketball-Reference data pipeline with a React betting dashboard that shops player props and team lines across sportsbooks, surfaces line-shopping savings and de-vigged +EV edges, and shows market-aware player trends.
+A full-stack application for analyzing **NBA, NFL and MLB** player performance and
+sports-betting value. Three independent data pipelines feed a React betting
+dashboard that shops player props and team lines across sportsbooks, surfaces
+line-shopping savings and de-vigged +EV edges, shows market-aware player trends —
+and then **grades its own advice** against what actually happened.
+
+Roughly 87,000 game logs across 2,500 players, with prop lines stored
+append-only so line movement and closing-line value survive.
 
 **Live Demo:** [sports-analytics-hub.vercel.app](https://sports-analytics-hub.vercel.app) · **API:** [Render backend](https://sports-analytics-hub-7hse.onrender.com)
 
@@ -18,12 +25,17 @@ Every book's price for each prop, with the highest-paying one flagged (★), sav
 ### Player Detail
 ![Player Detail](docs/screenshots/playerDetailPage.png)
 
-A market-aware game-log chart with the prop line overlaid (toggle PTS / REB / AST / PR / PA / RA), a full stat strip, recent game logs, and tonight's props with live EV.
+A game-log chart with the prop line overlaid, recent logs, and tonight's props
+with live EV. The market toggle is **role-aware**: a quarterback gets passing
+markets, a pitcher gets strikeouts, an NBA guard gets PTS/REB/AST — derived from
+the player's own game logs rather than a hardcoded list.
 
 ### Game Detail
 ![Game Detail](docs/screenshots/gameDetailPage.png)
 
-Team markets — spread, total, and moneyline with the best price per side highlighted — plus player props split by team across all six markets.
+Team markets — spread (or **Run Line** in baseball), total and moneyline with
+the best price per side highlighted — plus player props split by team. Games
+without props say so rather than rendering empty tables.
 
 ## Architecture
 
@@ -33,115 +45,191 @@ Team markets — spread, total, and moneyline with the best price per side highl
 │   (Vercel)      │     │   (Render)      │     │     (Neon)      │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
                                                           ▲ writes
-                          ┌───────────────────────────────┴──────────────────────────────┐
-              ┌───────────┴──────────┐                                     ┌──────────────┴───────────┐
-              │   Local cron (Mac)   │                                     │      GitHub Actions      │
-              │ Basketball Reference │                                     │       The Odds API       │
-              │  game logs · daily   │                                     │   player props · daily   │
-              └──────────────────────┘                                     └──────────────────────────┘
+              ┌───────────────────────────────────────────┴───────────┐
+              │                                                       │
+  ┌───────────┴──────────┐                    ┌───────────────────────┴──────────┐
+  │   Local cron (Mac)   │                    │         GitHub Actions           │
+  │ Basketball Reference │                    │  nflverse · statsapi.mlb.com     │
+  │  NBA logs · daily    │                    │  The Odds API props · daily      │
+  └──────────────────────┘                    └──────────────────────────────────┘
+      residential IP required                      datacenter IPs are fine
 ```
 
-### 1. Data Pipeline (Python)
+**Why the split.** Basketball Reference returns `403` to GitHub's datacenter
+IPs, so that scrape has to run from a residential IP. nflverse publishes static
+Parquet on GitHub Releases and `statsapi.mlb.com` is the same public JSON API
+MLB.com's own scoreboard calls — both serve a cloud runner happily, so only the
+NBA pipeline depends on the dev machine being awake.
 
-Two sources feed the database on a schedule:
+### 1. Data Pipelines
 
-- **Game logs + advanced box scores** — scraped from [Basketball Reference](https://www.basketball-reference.com) box-score pages (the `nba_api` was dropped because its endpoints 403 from datacenter IPs; it's now only used for headshots).
-- **Player props** — pulled from The Odds API.
+Four sources feed the database on a schedule. Each sport has its own loader
+because the shapes differ — football has no per-game box score in the basketball
+sense, and baseball splits every player into a batting row and a pitching row.
 
-| Script | Purpose |
-|--------|---------|
-| `fetch_bref_all_stats.py` | Combined basic + advanced box scores in one pass (full season, or `--yesterday`) |
-| `fetch_bref_rosters_and_logs.py` | Rosters + traditional game logs |
-| `fetch_bref_advanced_stats.py` | Advanced metrics (ORtg/DRtg, TS%, eFG%, USG%) — `--yesterday` or a season year |
-| `fetch_bref_backfill.py` | Backfill any date range: `--start YYYY-MM-DD [--end ...]` (idempotent; reuses the daily logic — used for playoffs) |
-| `fetch_headshots.py` | Player headshot URLs (`nba_api`) |
-| `scripts/fetch_props.mjs` | Player props from The Odds API → `player_props` table (all in-season sports, budget-capped) |
-| `daily_fetch.sh` | Local cron entrypoint → runs `fetch_bref_all_stats.py --yesterday` |
+| Script | Sport | Purpose |
+|--------|-------|---------|
+| `fetch_bref_all_stats.py` | NBA | Basic + advanced box scores in one pass (full season, or `--yesterday`) |
+| `fetch_bref_backfill.py` | NBA | Backfill any date range — idempotent, used for playoffs |
+| `fetch_headshots.py` | NBA | Headshot URLs (`nba_api`) |
+| `fetch_nfl_stats.py` | NFL | Weekly stats from nflverse Parquet |
+| `fetch_mlb_stats.py` | MLB | Box scores from `statsapi.mlb.com` |
+| `fetch_teams.py` | MLB | Team name ↔ abbreviation mapping |
+| `scripts/fetch_props.mjs` | all | Player props from The Odds API, budget-capped |
+| `daily_fetch.sh` | NBA | Local cron entrypoint |
 
-**Game-log scrape → local cron (not GitHub Actions).** Basketball Reference returns `403 Forbidden` to GitHub's datacenter IPs, so a cloud scraper fetches nothing. It runs from a residential IP via `cron` on the dev machine:
+**Scheduled jobs**
 
-```cron
-0 6 * * * /Users/<you>/repos/nbastats/server/python_scripts/daily_fetch.sh >> /tmp/nba-fetch.log 2>&1
-```
+| Workflow | When | What |
+|---|---|---|
+| [`stats-fetch.yml`](.github/workflows/stats-fetch.yml) | `0 11 * * *` | NFL + MLB game logs (2-day trailing window) |
+| [`props-fetch.yml`](.github/workflows/props-fetch.yml) | `0 20 * * *` | Player props for every in-season sport |
+| [`ci.yml`](.github/workflows/ci.yml) | push / PR | Lint, 167 tests, build, migrations up→down→up |
+| local `cron` | `0 6 * * *` | NBA scrape (residential IP) |
 
-> Note: `--yesterday` fetches a single day, so if the machine is asleep at run time that day is skipped — use `fetch_bref_backfill.py --start <date>` to fill gaps.
+**Props are sampled, not exhaustive.** Per-event prop calls cost
+`markets × regions` **per game** and are the entire Odds API budget — a full MLB
+slate is ~1,800 credits/month against a 500 tier. `fetch_props.mjs` derives how
+many games it can afford from the credits left and the days remaining in the
+period, ranks the slate by tightest spread, and covers the top few. A game that
+returns no props costs nothing and does not consume a slot. `--dry-run` prints
+the plan and projected cost without spending anything.
 
-**Player props → GitHub Actions.** The Odds API is a keyed commercial API that accepts any IP (no 403), so props refresh in the cloud — which also means they don't depend on the dev machine being awake near tip-off. [`.github/workflows/props-fetch.yml`](.github/workflows/props-fetch.yml) runs `scripts/fetch_props.mjs` once a day (plus a manual trigger), using the repo's `ODDS_API_KEY` and `DATABASE_URL` secrets:
-
-```cron
-0 20 * * *   # 4pm EDT / 3pm EST — lines posted for the slate
-0 23 * * *   # 7pm EDT / 6pm EST — sharper lines near tip-off
-```
+**NFL loader note.** It reads nflverse Parquet directly rather than using
+`nfl_data_py`, which pins `pandas<2` and silently breaks `nba_api`. Same data,
+one fewer dependency and no version conflict.
 
 ### 2. Database (PostgreSQL on Neon)
 
-[Neon](https://neon.tech) serverless Postgres — auto-suspends when idle and auto-resumes on the next query (sub-second), so it never gets stuck paused. Standard Postgres via `pg` (Node) and `psycopg` (Python).
+[Neon](https://neon.tech) serverless Postgres — auto-suspends when idle and
+resumes sub-second. Migrations run automatically on every Render deploy via
+`npm run migrate:deploy` ([node-pg-migrate](https://github.com/salsita/node-pg-migrate),
+8 migrations in `server/migrations/`).
 
 | Table | Contents |
 |-------|----------|
-| `players` | Player master data + `headshot_url`, `team_abbreviation` |
-| `player_game_logs` | Game-by-game traditional stats (`pts`, `reb`, `ast`, `stl`, `blk`, `min`) |
-| `advanced_box_scores` | Per-game advanced metrics (1:1 with `player_game_logs`) |
-| `player_props` | Append-only prop snapshots per book (populated by `scripts/fetch_props.mjs`); read current lines via the `player_props_latest` view |
-| `user_favorites` | Per-user saved players |
-| `teams` | NBA team names + abbreviations |
+| `players` | Master data, one row per player per sport, with `external_ids` for source keys |
+| `player_game_logs` | Game-by-game stats. Sport-specific numbers live in a `stats` JSONB blob |
+| `advanced_box_scores` | NBA-only advanced metrics (1:1 with `player_game_logs`) |
+| `player_props` | **Append-only** prop snapshots per book |
+| `player_props_latest` | View — the newest snapshot per (player, game, market, book) |
+| `teams` | Team names + abbreviations, per sport |
+| `user_favorites` | Saved players, scoped by sport |
 
-Season averages are **computed on the fly** from `player_game_logs` (the old `player_season_stats` table was dropped). Schema lives in `server/migrations/`.
+**One schema, three sports.** Rather than `nfl_players` / `mlb_players` tables
+that fork every query, one shared schema carries a `sport` column and a `stats`
+JSONB blob for the numbers that differ. `role` distinguishes a baseball
+player's batting row from their pitching row — the same game produces both for
+a two-way player, and `strike_outs` means the opposite thing on each.
+
+**Props are append-only** so line movement survives. The loader used to upsert,
+which meant paying Odds API credits for a line and overwriting it within twelve
+hours. History past 14 days is compacted to the closing line only; past a year
+it is dropped.
+
+Production currently holds ~87k game logs:
+
+| Sport | Players | Game logs |
+|---|---|---|
+| NBA | 582 | 28,674 |
+| NFL | 573 | 6,045 |
+| MLB | 1,378 | 52,427 |
 
 ### 3. Backend API (Express.js · ES Modules)
 
-#### Players (`/players`)
-- `GET /players` — list all players
-- `GET /players/:playerId` — player info
-- `GET /players/:playerId/season-averages` — season averages (computed from logs)
-- `GET /players/:playerId/gamelogs` — last 10 games
-- `GET /players/:playerId/full-gamelogs` — last 10 games + advanced stats
-- `GET /players/:playerId/gamelogs/:opponentAbbr` — filter by opponent
+Every sport-aware route takes `?sport=` (defaulting to `nba`, so nothing that
+predates the multi-sport work broke).
 
-#### Player Props (`/playerprops`)
-- `GET /playerprops/today` — every prop for the current slate (nearest game day on/after today, US Eastern)
-- `GET /playerprops/game/:gameId` — every prop for one game
-- `GET /playerprops/:playerId` — a player's props for their next game
-- `GET /playerprops/:playerId/game` — whether a player has an upcoming game
-- `POST /playerprops/refresh` — refetch props from The Odds API
+#### Stats (`/players`)
+- `GET /players` · `GET /players/:playerId` — scoped by sport
+- `GET /players/:playerId/gamelogs` · `/full-gamelogs` · `/gamelogs/:opponentAbbr`
+- `GET /players/leaderboard?sport=&stat=` — per-sport stat whitelist; MLB reports
+  season totals, NBA and NFL per-game rates, because that is how each sport is discussed
 
-#### NBA / NFL Betting (`/nbabets`, `/nflbets`)
-- `GET /{nba,nfl}games` — upcoming games (Odds API event list)
-- `GET /{nba,nfl}teamlines/:eventId` — moneyline / spread / total
-- `GET /{nba,nfl}playerprops/:eventId` — game player props
+#### Odds (`/bets/:sport`)
+- `GET /bets/:sport/games` — upcoming events (free, 0 credits)
+- `GET /bets/:sport/teamlines/:eventId` — moneyline / spread / total
+- `GET /bets/:sport/futures/:market` — outrights
+- `/nbabets` and `/nflbets` survive as deprecated aliases carrying
+  `Deprecation` / `Sunset` headers, so a stale frontend keeps working across a
+  deploy gap
 
-#### Teams · Favorites · Chat
-- `GET /teams`
-- `GET|POST /users/:userId/favorites`, `DELETE /users/:userId/favorites/:playerId`
-- `POST /chat` — natural-language NBA stats queries (OpenAI)
+#### Props (`/playerprops`) — read-only
+- `GET /playerprops/today` · `/game/:gameId` · `/:playerId` · `/:playerId/game`
+
+#### Results (`/grades`)
+- `GET /grades?sport=&days=` — settled props with win/loss/ROI/closing-line value
+
+#### Other
+- `GET /teams?sport=` · `GET|POST|DELETE /users/:userId/favorites?sport=`
+- `GET /kalshi/:market` — prediction-market prices
+- `GET /health` — liveness plus remaining Odds API credits
+- `POST /chat` — natural-language stats queries (OpenAI)
+
+**Rate limiting covers what costs money.** `/bets`, `/kalshi` and the legacy
+aliases are limited to 60 req/min; database-only routes are deliberately not,
+because they cost nothing and throttling them only degrades the app. `POST
+/playerprops/refresh` was **deleted** — it was public, unauthenticated, and
+looped every game calling the Odds API per event, roughly 120 credits for one
+request against a 500-credit tier.
 
 ### 4. Frontend (React + React Router)
 
-A multi-page betting dashboard (dark slate/purple theme). State lives in a shared `Layout` and is passed to pages via the router `Outlet` context; the bet slip is persisted to `localStorage`.
+Every route is scoped to a sport (`/:sport/...`), and each sport is
+self-contained — its own watchlist, bet slip and market registry. Shared state
+lives in `Layout` and reaches pages through the router `Outlet` context.
 
 | Route | Page | What it shows |
 |-------|------|---------------|
-| `/` | **Home** | Live edge ticker, watchlist cards with sparklines + hit rates, market-depth panel, hot prop edges, bet slip |
-| `/games` | **Games** | Tonight's NBA slate |
-| `/games/:gameId` | **Game Detail** | Team markets (spread/total/ML, best price per side) + player props split by team across all 6 markets (PTS/REB/AST/PR/PA/RA) |
-| `/players/:playerId` | **Player Detail** | Hero + stat strip, market-aware game-log chart with the line overlaid, opponent filter, tonight's props |
-| `/compare` | **Sportsbook Compare** | Best-line finder: book-by-book ledger, best price highlighted, savings/$100 vs. median, and a de-vigged consensus **Edge%** (+EV) |
-| `/nfl` | **NFL** | NFL games + betting lines (modal) |
+| `/:sport` | **Home** | Live edge ticker, watchlist with sparklines + hit rates, market depth, hot edges, bet slip, and how past edges settled. Falls back to an offseason hub when a sport has no games |
+| `/:sport/games` | **Games** | The slate, marked with which games have props |
+| `/:sport/games/:gameId` | **Game Detail** | Team markets + player props split by team |
+| `/:sport/players/:playerId` | **Player Detail** | Role-aware chart with the line overlaid, game logs, tonight's props |
+| `/:sport/compare` | **Compare Books** | Best-line finder: best price flagged, savings/$100, de-vigged Edge% |
+| `/:sport/explore` | **Explore** | Season leaderboards and head-to-head comparison |
+| `/:sport/futures` | **Futures** | Outrights plus Kalshi prediction markets |
 
-Shared betting math (American-odds ↔ implied prob/decimal, best price, de-vig, savings, EV%, parlay) lives in `frontend/src/lib/odds.js`. Auth is Google OAuth via `@react-oauth/google`.
+**Markets are a per-sport registry** (`frontend/src/lib/markets.js`). Every
+market-aware helper takes `sport` as its first argument, so a missed call site
+is an arity error rather than a page silently rendering basketball markets for a
+baseball player. Player pages narrow the market list by the player's role,
+derived from their game logs — a pitcher is offered strikeouts, not hits.
+
+**Freshness comes from the data.** Odds carry their own `fetched_at`, so the
+"lines as of" badge reports how stale the numbers are rather than when the
+browser last asked — the two agree only while the pipeline is healthy.
+
+Shared betting math (American ↔ implied/decimal, best price, de-vig, savings,
+EV%, parlay) lives in `frontend/src/lib/odds.js`.
 
 ## Technology Stack
 
 | Layer | Technologies |
 |-------|-------------|
-| **Frontend** | React 19, Vite, Tailwind CSS 4, React Router 7, Recharts 3, Axios |
-| **Backend** | Node.js (ES Modules), Express.js |
+| **Frontend** | React 19, Vite, Tailwind CSS 4, React Router 7, Recharts 3, shadcn/ui, Axios |
+| **Backend** | Node.js (ES Modules), Express.js, express-rate-limit, node-pg-migrate |
 | **Database** | PostgreSQL — [Neon](https://neon.tech) serverless |
-| **Data Pipeline** | Python — Basketball Reference scrape (local `cron`) + The Odds API props (GitHub Actions) |
+| **Data Pipeline** | Python (pandas, psycopg, requests) + a Node props fetcher |
+| **Testing** | Vitest — 140 frontend, 27 backend, gated in CI |
 | **AI** | OpenAI GPT-3.5-turbo |
 | **Auth** | Google OAuth 2.0 (`@react-oauth/google`) |
-| **External APIs** | The Odds API, Basketball Reference, `nba_api` (headshots) |
+| **External APIs** | The Odds API, Kalshi, nflverse, MLB Stats API, Basketball Reference |
 | **Hosting** | Vercel (frontend), Render (backend), Neon (database) |
+
+## Testing
+
+```bash
+cd frontend && npx vitest run     # 140 — betting math, market registry, freshness
+cd server   && npm test           # 27  — prop grading, CLV, profit
+```
+
+The suites cover the pure logic deliberately, because **the math is the
+product**: a silent de-vig, EV or grading error does not crash anything, it
+produces confidently wrong betting advice. CI additionally parses every backend
+module (they are ES modules imported at boot, so a syntax error takes the
+service down on deploy) and runs the migrations up, down to zero, and up again
+against a throwaway Postgres — which is the only thing verifying that a `down`
+migration actually reverses.
 
 ## Quick Start
 
@@ -159,8 +247,13 @@ npm run dev        # Vite dev server (HMR)
 ```bash
 cd server
 npm install
-npm run start      # Express on :5000 (nodemon)
+npm run migrate:up # apply any pending migrations
+npm run dev        # Express on :5000
 ```
+
+> `npm run migrate:deploy` is the variant Render's build command uses — it reads
+> `DATABASE_URL` straight from the environment rather than a `.env` file, which
+> does not exist on the host.
 
 ### Data pipeline
 ```bash
@@ -178,16 +271,23 @@ python fetch_bref_all_stats.py --yesterday
 # Fill a gap / backfill a range (e.g. the playoffs)
 python fetch_bref_backfill.py --start 2026-04-13 --end 2026-06-02
 
-# Props (needs ODDS_API_KEY)
-node ../scripts/fetch_props.mjs --dry-run   # plan + projected credit cost, spends nothing
-node ../scripts/fetch_props.mjs             # all in-season sports
-
 # NFL — nflverse Parquet, one season at a time
 python fetch_nfl_stats.py --season 2024
 
 # MLB — statsapi.mlb.com, a season or an explicit range
 python fetch_mlb_stats.py --season 2026
 python fetch_mlb_stats.py --start 2026-08-01 --end 2026-08-10
+
+# Team name <-> abbreviation mapping (game pages join on it)
+python fetch_teams.py --sport mlb
+```
+
+```bash
+# Props — Node, needs ODDS_API_KEY. Metered, so check the plan first.
+cd server
+node scripts/fetch_props.mjs --dry-run   # plan + projected cost, spends nothing
+node scripts/fetch_props.mjs             # every in-season sport
+node scripts/fetch_props.mjs --sport mlb # just one
 ```
 
 Both non-NBA loaders accept `--replace`, which clears that sport and reloads
@@ -241,12 +341,32 @@ VITE_API_BASE_URL=http://localhost:5000   # optional; defaults to the Render bac
 > Add your deployed origin to the Google OAuth client's **Authorized JavaScript origins**, or sign-in fails in production.
 
 ## Deployment
-- **Frontend → Vercel.** `frontend/vercel.json` adds an SPA rewrite so client routes (`/games/:id`, `/players/:id`, `/compare`) don't 404 on refresh.
-- **Backend → Render.** Set `DATABASE_URL`, `OPENAI_API_KEY`, `ODDS_API_KEY` in the service env.
+- **Frontend → Vercel.** `frontend/vercel.json` adds an SPA rewrite so client
+  routes don't 404 on refresh.
+- **Backend → Render.** Build command `npm install && npm run migrate:deploy`,
+  so schema changes ship with the code that needs them. Set `DATABASE_URL`,
+  `OPENAI_API_KEY` and `ODDS_API_KEY` in the service env.
 - **Database → Neon.** Use the pooled connection string.
 
+## Known Limitations
+
+- **Prop coverage is partial by design.** The free Odds API tier is 500
+  credits/month and a full MLB slate alone would need ~1,800, so only the most
+  competitive few games a day get props. Games without them say so rather than
+  rendering empty.
+- **Closing-line value reads as `—`.** With one props fetch a day the opening
+  and closing snapshots are the same row, so there is genuinely nothing to
+  measure yet. The code is correct; it starts producing numbers at a higher
+  cadence.
+- **NFL teams are not loaded.** nflverse publishes no teams artifact at the
+  paths this project reads. Game pages fall back to deriving the two sides from
+  the players who have props, so labels degrade rather than data.
+- **The chatbot is NBA-only** and will answer confidently wrong on an NFL or MLB
+  page — it reads the legacy `pts`/`reb`/`ast` columns, which are NULL for those
+  sports.
+
 ## Future Enhancements
-- Self-healing daily fetch (lookback window so a missed run catches up)
-- Historical line-movement tracking
+- Line-movement history UI (the append-only data is already accruing)
+- Sport-aware chatbot, rewritten around tool calling
 - Backtesting framework for prop/edge models
 - Mobile-friendly layout pass
