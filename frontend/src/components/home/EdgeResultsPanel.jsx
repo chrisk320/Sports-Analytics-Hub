@@ -80,7 +80,12 @@ export default function EdgeResultsPanel({ days = 14, limit = 25 }) {
     <div>
       <h3 className="font-bold text-slate-50">How our edges did</h3>
       <p className="text-xs text-slate-500">
-        Every flagged edge, settled at the best price we showed. Last {days} days.
+        {/* "Every flagged edge" overstated it: /grades settles every prop we
+            priced, not only the ones the alerts feed flagged as having savings.
+            Saying so matters on a panel whose whole purpose is honesty about
+            results. */}
+        Every prop we priced, settled at the best price shown. {summary?.graded ?? 0} bets
+        over {days} days.
       </p>
     </div>
   );
