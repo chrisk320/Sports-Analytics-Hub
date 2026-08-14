@@ -4,6 +4,7 @@ import { User } from 'lucide-react';
 import MiniSparkline from './MiniSparkline';
 import { Term } from '../ui/term';
 import { marketLabel } from '../../lib/markets';
+import { formatSignedPct, signColor } from '../../lib/format';
 import { useSport } from '@/context/SportContext';
 import {
   summarizeMarket,
@@ -121,9 +122,9 @@ export default function WatchlistCard({
             <span className="text-slate-400">
               avg <span className="font-mono tabular-nums text-slate-200">{avg != null ? avg.toFixed(1) : '—'}</span>
             </span>
-            <span className={ev != null && ev >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+            <span className={signColor(ev)}>
               <Term define="ev">EV</Term>{' '}
-              <span className="font-mono tabular-nums">{ev != null ? `${ev >= 0 ? '+' : ''}${ev.toFixed(1)}%` : '—'}</span>
+              <span className="font-mono tabular-nums">{formatSignedPct(ev)}</span>
             </span>
           </div>
 

@@ -7,6 +7,8 @@ const GLOSSARY = {
   ev: 'Expected value of the best available price vs. the fair (de-vigged) odds for this line.',
   l10: "How many of the player's last 10 games cleared this line.",
   vig: "The sportsbook's built-in margin — the amount implied probabilities on both sides exceed 100%.",
+  roi: 'Return on investment: profit divided by total staked, treating every settled bet as $100. Note a 50% win rate at -110 returns about -4.5%, because that is the vig.',
+  clv: 'Closing-line value: whether the price we flagged beat where the market closed. Beating the close is the standard evidence an edge was real rather than lucky, since it shows immediately instead of needing hundreds of settled bets.',
 };
 
 export function Term({ define, children }) {

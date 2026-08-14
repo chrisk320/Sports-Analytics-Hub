@@ -9,6 +9,7 @@ import { buildCompareRows, sortRows, bestBookToday, avgSavings, evCount } from '
 import MarketToggle from '../components/home/MarketToggle';
 import OffseasonBanner from '../components/OffseasonBanner';
 import { Panel } from '../components/ui/panel';
+import { Stat } from '../components/ui/stat';
 import { FreshnessBadge } from '../components/ui/freshness-badge';
 import { freshness } from '../lib/freshness';
 import { Term } from '../components/ui/term';
@@ -27,14 +28,6 @@ const segCls = (on) =>
     on ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
   }`;
 
-function Stat({ label, value, accent = 'text-slate-50' }) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-1 font-mono text-2xl font-bold ${accent}`}>{value}</div>
-    </div>
-  );
-}
 
 function CompareRow({ row, books, onAdd, inSlip }) {
   const slipPick = row.bestBook

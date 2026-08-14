@@ -8,6 +8,7 @@ import {
 } from '../../lib/odds';
 import { Panel } from '../ui/panel';
 import { marketLabel } from '../../lib/markets';
+import { formatSignedPct, signColor } from '../../lib/format';
 import { useSport } from '@/context/SportContext';
 
 // Per-market prop rows for one player: consensus line, best over book/price,
@@ -63,10 +64,10 @@ export default function TonightsPropsSidebar({ playerId, playerName, props = [],
                       {hr != null ? `${Math.round(hr * 100)}%` : '—'}
                     </span>
                   </span>
-                  <span className={ev != null && ev >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                  <span className={signColor(ev)}>
                     EV{' '}
                     <span className="font-mono tabular-nums">
-                      {ev != null ? `${ev >= 0 ? '+' : ''}${ev.toFixed(1)}%` : '—'}
+                      {formatSignedPct(ev)}
                     </span>
                   </span>
                   {s.overSavings > 0 && (

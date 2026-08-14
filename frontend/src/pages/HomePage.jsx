@@ -12,6 +12,7 @@ import MarketDepthPanel from '../components/home/MarketDepthPanel';
 import AlertsFeed from '../components/home/AlertsFeed';
 import SlipCard from '../components/home/SlipCard';
 import HotEdgesTable from '../components/home/HotEdgesTable';
+import EdgeResultsPanel from '../components/home/EdgeResultsPanel';
 import OffseasonBanner from '../components/OffseasonBanner';
 import { Panel } from '../components/ui/panel';
 
@@ -178,6 +179,9 @@ export default function HomePage() {
           </Panel>
         )}
 
+        {/* Settled history survives the offseason, unlike tonight's props. */}
+        <EdgeResultsPanel />
+
         {/* Watchlist still works off historical L10 averages */}
         <div>
           <h2 className="mb-3 text-lg font-semibold">Your watchlist</h2>
@@ -258,6 +262,9 @@ export default function HomePage() {
       </div>
 
       <HotEdgesTable edges={edges} onPin={setPinnedPlayerId} />
+
+      {/* The receipt for everything above: how the flagged edges settled. */}
+      <EdgeResultsPanel />
     </div>
   );
 }

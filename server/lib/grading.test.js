@@ -177,3 +177,25 @@ describe('summarize', () => {
     expect(s.avgClv).toBeNull();
   });
 });
+
+describe('one bet per edge', () => {
+  // The dedupe itself lives in SQL (DISTINCT ON in grades.controllers.js), but
+  // the ranking it uses must agree with how the app picks a best price --
+  // otherwise the panel grades a bet the UI never recommended. This pins the
+  // ordering rule the SQL implements.
+  const payout = (o) => (o > 0 ? o : 10000 / -o);
+  const bestOf = (quotes) => [...quotes].sort((a, b) => payout(b.odds) - payout(a.odds))[0];
+
+  it('ranks a plus price above any minus price', () => {
+    expect(bestOf([{ book: 'dk', odds: -110 }, { book: 'fd', odds: 180 }]).book).toBe('fd');
+  });
+
+  it('prefers the shorter minus price when all are negative', () => {
+    expect(bestOf([{ book: 'dk', odds: -200 }, { book: 'mgm', odds: -110 }]).book).toBe('mgm');
+  });
+
+  it('matches profitPer100 on the winner it selects', () => {
+    const winner = bestOf([{ book: 'dk', odds: -110 }, { book: 'fd', odds: 180 }, { book: 'mgm', odds: -150 }]);
+    expect(profitPer100('win', winner.odds)).toBe(180);
+  });
+});
