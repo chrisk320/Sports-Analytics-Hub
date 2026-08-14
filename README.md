@@ -11,11 +11,9 @@ append-only so line movement and closing-line value survive.
 
 **Live Demo:** [sports-analytics-hub.vercel.app](https://sports-analytics-hub.vercel.app) · **API:** [Render backend](https://sports-analytics-hub-7hse.onrender.com)
 
-![Walkthrough](docs/screenshots/walkthrough.gif)
+![Sports Analytics Hub — tonight's board](docs/screenshots/homePage.png)
 
-*A 20-second tour: tonight's board, the best-line finder, per-game props, a
-role-aware player page, and the panel that settles every prop against the box
-score.*
+*Home — a live edge ticker, watchlist cards with trend sparklines, prop comparison, and the bet slip.*
 
 ## Screens
 
