@@ -140,7 +140,7 @@ export default function Layout() {
       try {
         const [playersRes, teamsRes] = await Promise.all([
           api.get('/players', { params: { sport } }),
-          api.get('/teams'),
+          api.get('/teams', { params: { sport } }),
         ]);
         setAllPlayers(playersRes.data);
         setAllTeams(teamsRes.data);

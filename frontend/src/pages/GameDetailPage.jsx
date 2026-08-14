@@ -58,7 +58,7 @@ export default function GameDetailPage() {
     return event ? buildKalshiMarket(event, meta) : null;
   }, [kalshiData, meta]);
 
-  const { homePlayers, awayPlayers, homeAbbr, awayAbbr } = useMemo(() => {
+  const { homePlayers, awayPlayers, otherPlayers, homeAbbr, awayAbbr } = useMemo(() => {
     const byPlayer = new Map();
     for (const r of props) {
       const k = r.player_id ?? r.player_name;
@@ -67,13 +67,44 @@ export default function GameDetailPage() {
       byPlayer.get(k).props.push(r);
     }
     const all = [...byPlayer.values()];
-    const hAbbr = allTeams.find((t) => t.team_name === meta?.home)?.team_abbreviation;
-    const aAbbr = allTeams.find((t) => t.team_name === meta?.away)?.team_abbreviation;
+
+    // Resolve each side's abbreviation from the teams table, then fall back to
+    // the props themselves.
+    //
+    // The fallback is not defensive padding -- it is the bug this function had.
+    // The lookup returned undefined for every MLB game because `teams` held
+    // only the 30 NBA clubs, so both filters matched nothing and 117 real props
+    // rendered as two empty tables. Deriving the two sides from the players who
+    // actually have props means a missing or incomplete teams table degrades
+    // the LABEL, never the data.
+    const byName = (name) => allTeams.find((t) => t.team_name === name)?.team_abbreviation;
+    const counts = new Map();
+    for (const p of all) if (p.team) counts.set(p.team, (counts.get(p.team) ?? 0) + 1);
+    const dominant = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+
+    let hAbbr = byName(meta?.home);
+    let aAbbr = byName(meta?.away);
+    if (!hAbbr && !aAbbr) {
+      // Neither side known: take the two best-represented squads. Order is
+      // arbitrary but stable, and the headers still carry the real team names.
+      [aAbbr, hAbbr] = dominant;
+    } else if (!hAbbr) {
+      hAbbr = dominant.find((t) => t !== aAbbr);
+    } else if (!aAbbr) {
+      aAbbr = dominant.find((t) => t !== hAbbr);
+    }
+
+    const homePlayers = all.filter((p) => p.team === hAbbr);
+    const awayPlayers = all.filter((p) => p.team === aAbbr);
     return {
       homeAbbr: hAbbr,
       awayAbbr: aAbbr,
-      homePlayers: all.filter((p) => p.team === hAbbr),
-      awayPlayers: all.filter((p) => p.team === aAbbr),
+      homePlayers,
+      awayPlayers,
+      // A player traded since the last roster load carries a stale team and
+      // belongs to neither side. They are still playing in this game, so
+      // surface them rather than dropping them on the floor.
+      otherPlayers: all.filter((p) => p.team !== hAbbr && p.team !== aAbbr),
     };
   }, [props, allTeams, meta]);
 
@@ -161,9 +192,14 @@ export default function GameDetailPage() {
           <FreshnessBadge freshness={propsFreshness} />
         </div>
         {props.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <TeamPropsTable teamName={meta.away} teamAbbr={awayAbbr} players={awayPlayers} />
-            <TeamPropsTable teamName={meta.home} teamAbbr={homeAbbr} players={homePlayers} />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <TeamPropsTable teamName={meta.away} teamAbbr={awayAbbr} players={awayPlayers} />
+              <TeamPropsTable teamName={meta.home} teamAbbr={homeAbbr} players={homePlayers} />
+            </div>
+            {otherPlayers.length > 0 && (
+              <TeamPropsTable teamName="Other players" teamAbbr="" players={otherPlayers} />
+            )}
           </div>
         ) : (
           // Props are fetched for a sampled subset of each slate, so most games

@@ -203,3 +203,20 @@ def headshot_url(mlbam_id):
         "https://img.mlbstatic.com/mlb-photos/image/upload/"
         f"d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/{mlbam_id}/headshot/67/current"
     )
+
+
+def teams():
+    """All 30 MLB clubs: full name and the abbreviation the boxscores use.
+
+    The app joins a game's team NAME (which the Odds API supplies) to the
+    ABBREVIATION on a player row, so it needs both halves of this mapping. With
+    only NBA teams loaded, that join failed for every MLB game and the player
+    props section rendered empty despite the props being present.
+    """
+    data = _get("teams", sportId=SPORT_ID)
+    out = []
+    for t in data.get("teams", []):
+        name, abbr = t.get("name"), t.get("abbreviation")
+        if name and abbr:
+            out.append({"team_id": t.get("id"), "name": name, "abbreviation": abbr})
+    return out
