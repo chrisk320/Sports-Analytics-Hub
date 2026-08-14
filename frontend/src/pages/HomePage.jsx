@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { freshness } from '../lib/freshness';
+import { headlineStat } from '../lib/markets';
 import { computeEdges } from '../lib/odds';
 import { useSport } from '@/context/SportContext';
 import SearchBar from '../components/SearchBar';
@@ -52,6 +53,10 @@ export default function HomePage() {
   // Freshness comes from the odds' own fetched_at, not from when this component
   // last called the API — those diverge exactly when the pipeline breaks.
   const dataFreshness = useMemo(() => freshness(todaysProps), [todaysProps]);
+
+  // Whatever stat the leaderboard defaults to for this sport. Hardcoding "PPG"
+  // printed it against Joe Burrow's passing yards.
+  const headline = useMemo(() => headlineStat(sport), [sport]);
 
   // Poll tonight's slate of props (skip in the offseason — nothing to fetch).
   useEffect(() => {
@@ -171,7 +176,9 @@ export default function HomePage() {
                   {p.headshot_url && <img src={p.headshot_url} alt="" className="h-9 w-9 rounded-full bg-slate-800 object-cover" />}
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-slate-100">{p.full_name}</div>
-                    <div className="font-mono text-xs text-amber-300">{p.value} PPG</div>
+                    <div className="font-mono text-xs text-amber-300">
+                      {p.value} {headline?.label ?? ''}
+                    </div>
                   </div>
                 </Link>
               ))}

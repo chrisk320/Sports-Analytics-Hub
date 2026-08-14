@@ -142,3 +142,45 @@ export function defaultMarketFor(sport, role) {
   if (applicable.includes(cfg.defaultMarket)) return cfg.defaultMarket;
   return applicable[0] ?? cfg.defaultMarket;
 }
+
+// Leaderboard stats per sport. Ids must match the backend whitelist
+// (LEADERBOARD_STATS_BY_SPORT in stats.controllers.js) — the backend rejects
+// anything else, so these two lists have to stay in step.
+export const LEADERBOARD_STATS = {
+  nba: [
+    { id: 'pts', label: 'Points', unit: '' },
+    { id: 'reb', label: 'Rebounds', unit: '' },
+    { id: 'ast', label: 'Assists', unit: '' },
+    { id: 'stl', label: 'Steals', unit: '' },
+    { id: 'blk', label: 'Blocks', unit: '' },
+    { id: 'ts', label: 'True Shooting', unit: '%' },
+    { id: 'usage', label: 'Usage', unit: '%' },
+  ],
+  nfl: [
+    { id: 'pass_yds', label: 'Pass Yards', unit: '' },
+    { id: 'pass_tds', label: 'Pass TDs', unit: '' },
+    { id: 'rush_yds', label: 'Rush Yards', unit: '' },
+    { id: 'rec', label: 'Receptions', unit: '' },
+    { id: 'rec_yds', label: 'Rec Yards', unit: '' },
+    { id: 'ppr', label: 'Fantasy (PPR)', unit: '' },
+  ],
+  // Batting and pitching are separate populations, so these leaderboards are
+  // role-scoped server-side. Without that a hitter's 180 strikeouts would
+  // outrank every pitcher on the strikeout board.
+  mlb: [
+    { id: 'hits', label: 'Hits', unit: '' },
+    { id: 'home_runs', label: 'Home Runs', unit: '' },
+    { id: 'total_bases', label: 'Total Bases', unit: '' },
+    { id: 'rbi', label: 'RBI', unit: '' },
+    { id: 'strikeouts', label: 'Strikeouts Thrown', unit: '' },
+    { id: 'earned_runs', label: 'Earned Runs Allowed', unit: '' },
+  ],
+};
+
+/**
+ * The stat a sport's leaderboard defaults to — the backend picks the first
+ * configured entry when no `stat` is supplied, so this is the one it will use.
+ * Callers that render a headline number need its label; hardcoding one printed
+ * "289.3 PPG" against a quarterback's passing yards on the NFL home page.
+ */
+export const headlineStat = (sport) => LEADERBOARD_STATS[sport]?.[0] ?? null;

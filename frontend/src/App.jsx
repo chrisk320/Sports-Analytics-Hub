@@ -32,8 +32,6 @@ export default function App() {
         <Route path="/compare" element={<Navigate to={`/${DEFAULT_SPORT}/compare`} replace />} />
         <Route path="/explore" element={<Navigate to={`/${DEFAULT_SPORT}/explore`} replace />} />
         <Route path="/futures" element={<Navigate to={`/${DEFAULT_SPORT}/futures`} replace />} />
-        {/* /nfl used to be the whole NFL product; it's now just its games list. */}
-        <Route path="/nfl" element={<Navigate to="/nfl/games" replace />} />
 
         <Route path="/" element={<Navigate to={`/${DEFAULT_SPORT}`} replace />} />
 

@@ -2,43 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Loader, Trophy } from 'lucide-react';
 import { api } from '../lib/api';
+import { LEADERBOARD_STATS } from '../lib/markets';
 import SearchBar from '../components/SearchBar';
 import { Panel } from '../components/ui/panel';
 import { useSport } from '@/context/SportContext';
 
-// Leaderboard stats per sport. Ids must match the backend whitelist
-// (LEADERBOARD_STATS_BY_SPORT in stats.controllers.js) — the backend rejects
-// anything else, so these two lists have to stay in step.
-const STATS_BY_SPORT = {
-  nba: [
-    { id: 'pts', label: 'Points', unit: '' },
-    { id: 'reb', label: 'Rebounds', unit: '' },
-    { id: 'ast', label: 'Assists', unit: '' },
-    { id: 'stl', label: 'Steals', unit: '' },
-    { id: 'blk', label: 'Blocks', unit: '' },
-    { id: 'ts', label: 'True Shooting', unit: '%' },
-    { id: 'usage', label: 'Usage', unit: '%' },
-  ],
-  nfl: [
-    { id: 'pass_yds', label: 'Pass Yards', unit: '' },
-    { id: 'pass_tds', label: 'Pass TDs', unit: '' },
-    { id: 'rush_yds', label: 'Rush Yards', unit: '' },
-    { id: 'rec', label: 'Receptions', unit: '' },
-    { id: 'rec_yds', label: 'Rec Yards', unit: '' },
-    { id: 'ppr', label: 'Fantasy (PPR)', unit: '' },
-  ],
-  // Batting and pitching are separate populations, so these leaderboards are
-  // role-scoped server-side. Without that a hitter's 180 strikeouts would
-  // outrank every pitcher on the strikeout board.
-  mlb: [
-    { id: 'hits', label: 'Hits', unit: '' },
-    { id: 'home_runs', label: 'Home Runs', unit: '' },
-    { id: 'total_bases', label: 'Total Bases', unit: '' },
-    { id: 'rbi', label: 'RBI', unit: '' },
-    { id: 'strikeouts', label: 'Strikeouts Thrown', unit: '' },
-    { id: 'earned_runs', label: 'Earned Runs Allowed', unit: '' },
-  ],
-};
 
 const RECAP_BY_SPORT = {
   nba: [
@@ -79,7 +47,7 @@ export default function ExplorePage() {
   const { allPlayers } = useOutletContext();
   const { sport, label: sportLabel } = useSport();
   // Memoized so they're stable identities in effect/memo dependency lists.
-  const STATS = useMemo(() => STATS_BY_SPORT[sport] ?? [], [sport]);
+  const STATS = useMemo(() => LEADERBOARD_STATS[sport] ?? [], [sport]);
   const RECAP_CATEGORIES = useMemo(() => RECAP_BY_SPORT[sport] ?? [], [sport]);
 
   const [seasons, setSeasons] = useState([]);

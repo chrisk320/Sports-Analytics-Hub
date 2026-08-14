@@ -7,6 +7,9 @@ import { Panel } from '../ui/panel';
 const STAKE = 10;
 
 export default function SlipCard({ slip = [], onRemove, onClear }) {
+  // Falls back to the context sport only for picks saved before the slip was
+  // sport-aware. Reading the label from the CURRENT sport rendered an NBA points
+  // pick on an MLB page as the raw market id, because MLB has no PTS market.
   const { sport } = useSport();
   const parlay = parlayOdds(slip.map((p) => p.price));
   const dec = americanToDecimal(parlay);
@@ -39,7 +42,7 @@ export default function SlipCard({ slip = [], onRemove, onClear }) {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-100">{p.playerName}</p>
                   <p className="text-xs text-slate-500">
-                    {p.side === 'over' ? 'Over' : 'Under'} {p.line} {marketLabel(sport, p.market)} ·{' '}
+                    {p.side === 'over' ? 'Over' : 'Under'} {p.line} {marketLabel(p.sport ?? sport, p.market)} ·{' '}
                     {bookLabel(p.book)}
                   </p>
                 </div>

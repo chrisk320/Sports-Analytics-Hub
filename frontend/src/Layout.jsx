@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { Outlet, useParams, Navigate } from 'react-router-dom';
 import { api } from './lib/api';
@@ -80,6 +80,17 @@ export default function Layout() {
     if (sport) setWatchlistMarket(marketsFor(sport).defaultMarket);
   }, [sport]);
 
+  // Anything scoped to a sport has to go when the sport does. Stale search
+  // results are the dangerous one: they list the previous sport's players, and
+  // clicking one would favorite a player from a league you are no longer on.
+  // A stale pin also suppresses the home page's auto-selection.
+  useEffect(() => {
+    setSearchTerm('');
+    setSearchResults([]);
+    setPinnedPlayerId(null);
+    setHoveredPlayerId(null);
+  }, [sport]);
+
   // Sport is part of the key: player ids are only unique WITHIN a sport, so an
   // NBA player 23 and an MLB player 23 would otherwise collide in the slip.
   const slipId = (p) => `${p.sport}-${p.playerId}-${p.market}-${p.side}-${p.book}`;
@@ -91,15 +102,21 @@ export default function Layout() {
       return [...prev, { ...withSport, id }];
     });
   const removeFromSlip = (id) => setSlip((prev) => prev.filter((p) => p.id !== id));
-  const clearSlip = () => setSlip([]);
+  // Clears this sport only. A single Clear that also wiped the NBA picks a user
+  // had assembled would destroy work they never asked to discard.
+  const clearSlip = () => setSlip((prev) => prev.filter((p) => p.sport !== sport));
   const isInSlip = (pick) => slip.some((p) => p.id === slipId({ sport, ...pick }));
+
+  // Pages see only the current sport's picks; state and localStorage keep them
+  // all, so switching to MLB and back leaves the NBA slip exactly as it was.
+  const slipForSport = useMemo(() => slip.filter((p) => p.sport === sport), [slip, sport]);
 
   useEffect(() => {
     if (user) {
       const fetchFavorites = async () => {
         try {
           setIsLoading(true);
-          const response = await api.get(`/users/${user.id}/favorites`);
+          const response = await api.get(`/users/${user.id}/favorites`, { params: { sport } });
           setSelectedPlayers(response.data);
         } catch (error) {
           console.error('Failed to fetch favorite players:', error);
@@ -108,8 +125,14 @@ export default function Layout() {
         }
       };
       fetchFavorites();
+    } else {
+      // Signed out, or switching sports while signed out: never carry one
+      // sport's watchlist onto another's page.
+      setSelectedPlayers([]);
     }
-  }, [user]);
+    // `sport` is a real dependency, not decoration -- without it the fetch never
+    // re-runs on a switch, which is half of why NBA players appeared on /nfl.
+  }, [user, sport]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -236,7 +259,7 @@ export default function Layout() {
     setWatchlistMarket,
     selectedBooks,
     setSelectedBooks,
-    slip,
+    slip: slipForSport,
     addToSlip,
     removeFromSlip,
     clearSlip,
