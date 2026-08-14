@@ -21,6 +21,31 @@ import pandas as pd
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
 
+# nflverse renamed the weekly-stats release tag. `stats_player` is current and
+# carries 2023 onward; `player_stats` is the old tag and stopped being updated
+# after 2024. Probing both, new first, means a rename does not silently make
+# every future season look unpublished -- which is exactly what happened: 2025
+# had been out for months while season_available() reported False.
+WEEKLY_TAGS = ("stats_player", "player_stats")
+
+
+def _weekly_url(tag, season):
+    return f"{BASE}/{tag}/stats_player_week_{season}.parquet"
+
+
+def _read_weekly(season):
+    """Weekly stats for a season, from whichever release tag currently has it."""
+    errors = []
+    for tag in WEEKLY_TAGS:
+        try:
+            return pd.read_parquet(_weekly_url(tag, season))
+        except Exception as e:  # noqa: BLE001 - any failure means "try the next tag"
+            errors.append(f"{tag}: {type(e).__name__}")
+    raise FileNotFoundError(
+        f"nflverse has no weekly stats for {season} under any known tag ({'; '.join(errors)}). "
+        f"Check https://github.com/nflverse/nflverse-data/releases for a renamed artifact."
+    )
+
 # Weekly stat columns worth storing. Deliberately a whitelist: the source has
 # 114 columns and most are modeling intermediates we would never surface.
 STAT_COLUMNS = [
@@ -57,7 +82,7 @@ def weekly_stats(season):
     (nflverse adds and renames fields between seasons, so absent columns are
     filled with 0 rather than raising).
     """
-    df = pd.read_parquet(f"{BASE}/player_stats/stats_player_week_{season}.parquet")
+    df = _read_weekly(season)
 
     for col in STAT_COLUMNS:
         if col not in df.columns:
@@ -112,7 +137,7 @@ def schedules(season):
 def season_available(season):
     """Whether nflverse has published weekly stats for a season yet."""
     try:
-        pd.read_parquet(f"{BASE}/player_stats/stats_player_week_{season}.parquet")
+        _read_weekly(season)
         return True
     except Exception:
         return False

@@ -132,7 +132,7 @@ Production currently holds ~87k game logs:
 | Sport | Players | Game logs |
 |---|---|---|
 | NBA | 582 | 28,674 |
-| NFL | 573 | 6,045 |
+| NFL | 728 | 12,098 (2024 + 2025) |
 | MLB | 1,378 | 52,427 |
 
 ### 3. Backend API (Express.js · ES Modules)
@@ -271,8 +271,8 @@ python fetch_bref_all_stats.py --yesterday
 # Fill a gap / backfill a range (e.g. the playoffs)
 python fetch_bref_backfill.py --start 2026-04-13 --end 2026-06-02
 
-# NFL — nflverse Parquet, one season at a time
-python fetch_nfl_stats.py --season 2024
+# NFL — nflverse Parquet, one season at a time (2023 onward available)
+python fetch_nfl_stats.py --season 2025
 
 # MLB — statsapi.mlb.com, a season or an explicit range
 python fetch_mlb_stats.py --season 2026
