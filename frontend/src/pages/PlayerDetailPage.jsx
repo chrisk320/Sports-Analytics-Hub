@@ -189,6 +189,11 @@ export default function PlayerDetailPage() {
   const chartSummary = summarizeMarket(sport, props, chartMarket);
   const chartLine = chartSummary?.line ?? null;
   const last10 = logs.slice(0, recentWindow);
+  // Label the sample that is actually on screen, not the configured maximum.
+  // The server caps the window at the player's latest season, so a short or
+  // young season returns fewer games -- Joe Burrow's 2025 was 8. Badging that
+  // "L10" would overstate the base every hit rate and average is computed on.
+  const windowLabel = last10.length ? `L${last10.length}` : recentLabel;
   const l10avg = avgFromLogs(sport, last10, chartMarket);
   const oppAvg = oppSplit ? avgFromLogs(sport, oppSplit.logs, chartMarket) : null;
 
@@ -301,9 +306,9 @@ export default function PlayerDetailPage() {
             roleMarkets.map((id) => (
               <StatCell
                 key={id}
-                label={`${marketLabel(sport, id)} ${recentLabel}`}
+                label={`${marketLabel(sport, id)} ${windowLabel}`}
                 value={avgFromLogs(sport, logs, id)?.toFixed(1)}
-                title={`Average over the last ${recentWindow} games. Season totals are not yet computed for ${sport.toUpperCase()}.`}
+                title={`Average over the last ${last10.length} games. Season totals are not yet computed for ${sport.toUpperCase()}.`}
               />
             ))
           )}
@@ -319,7 +324,7 @@ export default function PlayerDetailPage() {
               <div>
                 <h3 className="font-bold text-slate-50">Last {last10.length} games · {marketLabel(sport, chartMarket)}</h3>
                 <p className="text-xs text-slate-500">
-                  {recentLabel} avg <span className="font-mono tabular-nums text-slate-300">{l10avg != null ? l10avg.toFixed(1) : '—'}</span>
+                  {windowLabel} avg <span className="font-mono tabular-nums text-slate-300">{l10avg != null ? l10avg.toFixed(1) : '—'}</span>
                   {oppAvg != null && (
                     <> · vs {oppSplit.opp} <span className="font-mono tabular-nums text-slate-300">{oppAvg.toFixed(1)}</span></>
                   )}

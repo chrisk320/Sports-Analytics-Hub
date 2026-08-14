@@ -106,7 +106,7 @@ export default function WatchlistCard({
             </div>
             <div className="rounded-lg bg-slate-800/60 py-1.5">
               <div className="text-[10px] uppercase text-slate-500">
-                <Term define="l10">L10</Term>
+                <Term define="l10">L{last10.length}</Term>
               </div>
               <div className="font-mono tabular-nums font-semibold text-slate-50">
                 {overCount != null ? `${overCount}/${last10.length}` : '—'}
@@ -153,7 +153,7 @@ export default function WatchlistCard({
           No prop line tonight
           {avg != null && (
             <div className="mt-1 text-slate-400">
-              L10 avg <span className="font-mono tabular-nums">{avg.toFixed(1)}</span>
+              L{last10.length} avg <span className="font-mono tabular-nums">{avg.toFixed(1)}</span>
             </div>
           )}
         </div>

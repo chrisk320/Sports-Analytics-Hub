@@ -121,6 +121,16 @@ export const getFullGameLogs = async (req, res) => {
             FROM player_game_logs pgl
             LEFT JOIN advanced_box_scores abs ON pgl.game_log_id = abs.game_log_id
             WHERE pgl.player_id = $1
+              -- Recent form does not cross a season boundary. Without this, a
+              -- player who missed time has their window reach back into the
+              -- previous year: Joe Burrow played 8 games in 2025, so "last 10"
+              -- averaged those together with two games from 2024 -- a year-old
+              -- form read presented as current. The window is now "the last N
+              -- games of this player's most recent season", which returns
+              -- fewer than N when the season is short or still young.
+              AND pgl.season = (
+                SELECT MAX(season) FROM player_game_logs WHERE player_id = $1
+              )
             ORDER BY pgl.game_date DESC
             LIMIT $2;
         `;
