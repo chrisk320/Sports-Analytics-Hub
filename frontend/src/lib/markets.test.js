@@ -199,10 +199,20 @@ describe('the same math runs for every sport', () => {
 
 describe('per-sport display config', () => {
   it('scales the recent-form window to the season length', () => {
-    // 82 games vs 17 vs 162 — "L10" is only meaningful for one of them.
+    // 82 games vs 17 vs 162. NBA and NFL both use 10 but for different
+    // reasons -- basketball because it is two weeks of games, football because
+    // ten spans most of a season and, with history loaded, reaches back into
+    // the previous one. Baseball needs 15 because day-to-day variance is huge.
     expect(marketsFor('nba').recentLabel).toBe('L10');
-    expect(marketsFor('nfl').recentLabel).toBe('L5');
+    expect(marketsFor('nfl').recentLabel).toBe('L10');
     expect(marketsFor('mlb').recentLabel).toBe('L15');
+
+    // The label and the window have to agree; a badge reading L10 over five
+    // games would misstate the sample every hit rate is computed on.
+    for (const s of ['nba', 'nfl', 'mlb']) {
+      const cfg = marketsFor(s);
+      expect(cfg.recentLabel).toBe(`L${cfg.recentWindow}`);
+    }
   });
 
   it('calls the spread a Run Line in baseball', () => {

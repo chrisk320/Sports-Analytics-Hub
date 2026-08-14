@@ -40,10 +40,13 @@ export const MARKETS_BY_SPORT = {
     // falls back to the first positionally-applicable market in `order`, which
     // hands a wide receiver RUSHYDS — technically valid, practically useless.
     defaultByRole: { QB: 'PASSYDS', RB: 'RUSHYDS', WR: 'RECYDS', TE: 'RECYDS' },
-    // A 17-game season makes "last 10" nearly half the year — too wide to say
-    // anything about current form.
-    recentWindow: 5,
-    recentLabel: 'L5',
+    // Ten, spanning the season boundary when it has to. Five was chosen when
+    // only one season was loaded, on the reasoning that "last 10" of a 17-game
+    // year is too wide to describe current form. With two seasons in the table
+    // the window no longer eats half a season, and five games is a thin base
+    // for a hit rate — one big day moves it 20 points.
+    recentWindow: 10,
+    recentLabel: 'L10',
     spreadLabel: 'Spread',
     order: ['PASSYDS', 'PASSTD', 'RUSHYDS', 'REC', 'RECYDS', 'ANYTD'],
     markets: {

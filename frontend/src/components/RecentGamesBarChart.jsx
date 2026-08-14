@@ -18,9 +18,29 @@ const RecentGamesBarChart = ({ data, marketId, line }) => {
 
     if (!data || data.length === 0) return null;
 
+    // Add the year only when the window actually spans more than one, which
+    // happens whenever the recent-form window reaches back past a season
+    // boundary -- an NFL quarterback who missed time can have "last 10" cover
+    // two seasons, and without the year two bars both read 12/28 with an
+    // eight-month gap between them and no way to tell them apart.
+    const short = (d) => d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+    const dates = data.map((log) => new Date(log.game_date));
+    // Show the year only when the short labels would collide. A window that
+    // reaches past a season boundary -- an NFL quarterback who missed time can
+    // have "last 10" cover two seasons -- otherwise renders two bars both
+    // reading 12/28 with eight months between them. Testing for the collision
+    // rather than for "more than one calendar year" keeps NBA alone, since a
+    // normal basketball window straddles December and January without ever
+    // being ambiguous.
+    const labels = dates.map(short);
+    const ambiguous = new Set(labels).size !== labels.length;
+    const dateOpts = ambiguous
+        ? { month: 'numeric', day: 'numeric', year: '2-digit' }
+        : { month: 'numeric', day: 'numeric' };
+
     const chartData = data
         .map((log) => ({
-            date: new Date(log.game_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
+            date: new Date(log.game_date).toLocaleDateString('en-US', dateOpts),
             value: statFromLog(sport, log, market),
         }))
         .reverse();
