@@ -49,7 +49,7 @@ export default function TeamPropsTable({ teamName, teamAbbr, players = [] }) {
               {sorted.map((pl) => (
                 <tr
                   key={pl.playerId ?? pl.playerName}
-                  onClick={() => pl.playerId && navigate(`/players/${pl.playerId}`)}
+                  onClick={() => pl.playerId && navigate(`/${sport}/players/${pl.playerId}`)}
                   className={`border-t border-slate-800/70 ${pl.playerId ? 'cursor-pointer hover:bg-slate-800/40' : ''}`}
                 >
                   <td className="px-4 py-2 font-medium text-slate-100">{pl.playerName}</td>

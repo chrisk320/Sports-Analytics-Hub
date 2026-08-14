@@ -169,7 +169,7 @@ export default function HomePage() {
               {topScorers.map((p, i) => (
                 <Link
                   key={p.player_id}
-                  to={`/players/${p.player_id}`}
+                  to={`/${sport}/players/${p.player_id}`}
                   className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 p-3 hover:border-purple-500"
                 >
                   <span className="font-mono text-slate-500">{i + 1}</span>

@@ -30,6 +30,10 @@ const segCls = (on) =>
 
 
 function CompareRow({ row, books, onAdd, inSlip }) {
+  // Its own subscription rather than a prop: the row is rendered in a loop and
+  // threading sport through every call site is noise for a value the context
+  // already has.
+  const { sport } = useSport();
   const slipPick = row.bestBook
     ? {
         playerId: row.playerId,
@@ -47,7 +51,7 @@ function CompareRow({ row, books, onAdd, inSlip }) {
     <tr className="border-t border-slate-800/70 hover:bg-slate-800/30">
       <td className="whitespace-nowrap px-4 py-2.5 font-medium text-slate-100">
         {row.playerId ? (
-          <Link to={`/players/${row.playerId}`} className="hover:text-cyan-300">
+          <Link to={`/${sport}/players/${row.playerId}`} className="hover:text-cyan-300">
             {row.playerName}
           </Link>
         ) : (

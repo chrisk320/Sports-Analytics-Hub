@@ -69,7 +69,7 @@ export default function WatchlistCard({
         </div>
         <div className="min-w-0 flex-1">
           <Link
-            to={`/players/${player.player_id}`}
+            to={`/${sport}/players/${player.player_id}`}
             onClick={(e) => e.stopPropagation()}
             className="block truncate font-bold text-slate-50 hover:text-cyan-300"
           >

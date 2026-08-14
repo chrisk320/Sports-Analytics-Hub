@@ -43,7 +43,7 @@ export default function HotEdgesTable({ edges = [], onPin, limit = 15 }) {
                   <td className="px-4 py-2 font-medium text-slate-100">
                     {e.playerId ? (
                       <Link
-                        to={`/players/${e.playerId}`}
+                        to={`/${sport}/players/${e.playerId}`}
                         onClick={(ev) => ev.stopPropagation()}
                         className="hover:text-cyan-300"
                       >

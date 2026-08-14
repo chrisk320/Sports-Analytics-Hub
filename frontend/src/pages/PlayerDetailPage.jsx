@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useOutletContext, Link } from 'react-router-dom';
+import { useParams, useOutletContext, Link, Navigate } from 'react-router-dom';
 import { User, Star, Loader, ChevronLeft } from 'lucide-react';
 import { api } from '../lib/api';
 import { summarizeMarket, avgFromLogs, statFromLog } from '../lib/odds';
@@ -57,6 +57,20 @@ export default function PlayerDetailPage() {
     [allPlayers, playerId]
   );
   const player = playerFromList || fetchedPlayer;
+
+  // Self-correct when the URL names the wrong sport for this player.
+  //
+  // /players/:id with no sport still exists as a legacy redirect and sends
+  // everything to the default sport, so a bookmark to an MLB player lands on
+  // /nba/players/123 and renders basketball markets against baseball logs.
+  // Rather than trust every caller to build the path correctly forever, the
+  // page checks the sport the API reports for this player and redirects once.
+  //
+  // Reads fetchedPlayer specifically: allPlayers is already scoped to the route
+  // sport, so a mismatch is exactly the case where the list lookup misses and
+  // only the by-id fetch knows the truth.
+  const trueSport = fetchedPlayer?.sport;
+  const wrongSport = trueSport && trueSport !== sport;
 
   // Positions have disjoint stat sets: a tight end never throws and a pitcher
   // rarely bats, so offering (and defaulting to) the wrong market renders an
@@ -159,6 +173,12 @@ export default function PlayerDetailPage() {
       setDisplayLogs([]);
     }
   };
+
+  // Placed after every hook, like the invalid-sport guard in Layout: an early
+  // return above them would break the Rules of Hooks.
+  if (wrongSport) {
+    return <Navigate to={`/${trueSport}/players/${playerId}`} replace />;
+  }
 
   const isFav = selectedPlayers.some((p) => String(p.player_id) === String(playerId));
   const toggleFav = () => {
