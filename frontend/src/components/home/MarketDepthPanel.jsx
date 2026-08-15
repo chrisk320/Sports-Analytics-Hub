@@ -48,7 +48,7 @@ export default function MarketDepthPanel({ player, props = [], marketId, games =
                   price: summary.bestOver.over_odds,
                 })
               }
-              className="rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-400"
+              className="rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-purple-400"
             >
               ＋ best price
             </button>

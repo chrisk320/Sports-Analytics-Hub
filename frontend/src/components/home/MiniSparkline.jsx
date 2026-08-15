@@ -13,11 +13,11 @@ export default function MiniSparkline({ values, line, height = 44 }) {
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }} barCategoryGap={2}>
         {line != null && (
-          <ReferenceLine y={line} stroke="#fbbf24" strokeDasharray="3 2" strokeWidth={1} />
+          <ReferenceLine y={line} stroke="#ffd23f" strokeDasharray="3 2" strokeWidth={1} />
         )}
         <Bar dataKey="v" radius={[2, 2, 0, 0]} isAnimationActive={false}>
           {data.map((d) => (
-            <Cell key={d.i} fill={line != null && d.v >= line ? '#34d399' : '#475569'} />
+            <Cell key={d.i} fill={line != null && d.v >= line ? '#34d399' : '#5f534a'} />
           ))}
         </Bar>
       </BarChart>

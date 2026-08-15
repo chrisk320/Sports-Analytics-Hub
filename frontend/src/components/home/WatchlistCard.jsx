@@ -142,7 +142,7 @@ export default function WatchlistCard({
                   price: best.over_odds,
                 });
               }}
-              className="mt-3 w-full rounded-lg bg-purple-500 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-400"
+              className="mt-3 w-full rounded-lg bg-purple-500 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-purple-400"
             >
               ＋ add over {line} ({bookLabel(best.bookmaker)})
             </button>

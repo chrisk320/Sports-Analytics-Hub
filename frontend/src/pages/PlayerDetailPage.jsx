@@ -271,14 +271,14 @@ export default function PlayerDetailPage() {
             <button
               onClick={addHeadlineToSlip}
               disabled={!summarizeMarket(sport, props, defaultMarket)?.bestOver}
-              className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ＋ slip
             </button>
             <button
               onClick={toggleFav}
               className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                isFav ? 'bg-amber-500 text-white hover:bg-amber-400' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                isFav ? 'bg-amber-500 text-primary-foreground hover:bg-amber-400' : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
               }`}
             >
               <Star className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} /> {isFav ? 'Favorited' : 'Favorite'}

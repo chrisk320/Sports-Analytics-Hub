@@ -277,7 +277,7 @@ export default function Layout() {
         {/* AI assistant FAB */}
         <button
           onClick={() => setIsChatOpen(true)}
-          className="fixed bottom-6 right-6 bg-purple-500 hover:bg-purple-400 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
+          className="fixed bottom-6 right-6 bg-purple-500 hover:bg-purple-400 text-primary-foreground rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 z-40"
           title="Ask AI about player stats"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

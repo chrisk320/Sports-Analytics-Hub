@@ -22,7 +22,7 @@ export default function OffseasonBanner({ sport = 'NBA' }) {
       <div className="flex shrink-0 gap-3">
         <Link
           to={`/${sportId}/explore`}
-          className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400"
+          className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-purple-400"
         >
           Explore stats
         </Link>

@@ -29,7 +29,7 @@ const Login = ({ user, setToken }) => {
     }
 
     return (
-        <button className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-400 transition-colors px-4 py-2 rounded-lg text-white font-mono text-xs uppercase tracking-wide font-semibold" onClick={() => login()}>
+        <button className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-400 transition-colors px-4 py-2 rounded-lg text-primary-foreground font-mono text-xs uppercase tracking-wide font-semibold" onClick={() => login()}>
             <User className="w-5 h-5" />
             <span>Sign In</span>
         </button>

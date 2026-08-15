@@ -19,7 +19,7 @@ export function FreshnessBadge({ freshness, prefix = 'lines as of', className = 
 
   return (
     <span
-      className={`flex items-center gap-2 text-xs ${stale ? 'text-amber-400' : 'text-slate-500'} ${className}`}
+      className={`flex items-center gap-2 text-xs ${stale ? 'text-orange-400' : 'text-slate-500'} ${className}`}
       title={
         stale
           ? `These odds are ${age} — the scheduled refresh has not run since.`
@@ -27,7 +27,9 @@ export function FreshnessBadge({ freshness, prefix = 'lines as of', className = 
       }
     >
       <span
-        className={`h-2 w-2 rounded-full ${stale ? 'bg-amber-400' : 'animate-pulse bg-emerald-500'}`}
+        /* orange, not amber: amber is the best-price highlight everywhere else,
+           so a stale badge in amber read as a value cue rather than a warning. */
+        className={`h-2 w-2 rounded-full ${stale ? 'bg-orange-400' : 'animate-pulse bg-emerald-500'}`}
       />
       {stale ? `stale — ${age}` : `${prefix} ${label}`}
     </span>

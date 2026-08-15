@@ -88,7 +88,7 @@ export default function TonightsPropsSidebar({ playerId, playerName, props = [],
                         price: s.bestOver.over_odds,
                       })
                     }
-                    className="mt-2 w-full rounded-lg bg-purple-500 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-400"
+                    className="mt-2 w-full rounded-lg bg-purple-500 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-purple-400"
                   >
                     ＋ add to slip
                   </button>

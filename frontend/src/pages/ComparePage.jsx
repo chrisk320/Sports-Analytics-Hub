@@ -25,7 +25,7 @@ const chipCls = (on) =>
 
 const segCls = (on) =>
   `rounded-md px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition ${
-    on ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
+    on ? 'bg-purple-500 text-primary-foreground' : 'text-slate-400 hover:text-slate-50'
   }`;
 
 
@@ -107,7 +107,7 @@ function CompareRow({ row, books, onAdd, inSlip }) {
             onClick={() => onAdd(slipPick)}
             disabled={added}
             className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-              added ? 'cursor-default bg-slate-800 text-slate-500' : 'bg-purple-500 text-white hover:bg-purple-400'
+              added ? 'cursor-default bg-slate-800 text-slate-500' : 'bg-purple-500 text-primary-foreground hover:bg-purple-400'
             }`}
           >
             {added ? 'added' : '＋ slip'}

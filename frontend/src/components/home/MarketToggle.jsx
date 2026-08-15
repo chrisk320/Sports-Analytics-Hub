@@ -21,7 +21,7 @@ export default function MarketToggle({ value, onChange, options }) {
             onClick={() => onChange(id)}
             className={`px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide rounded-md transition ${
               active
-                ? 'bg-purple-500 text-white'
+                ? 'bg-purple-500 text-primary-foreground'
                 : 'text-slate-400 hover:text-slate-50 hover:bg-slate-800'
             }`}
           >

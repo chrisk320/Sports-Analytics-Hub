@@ -50,26 +50,26 @@ const RecentGamesBarChart = ({ data, marketId, line }) => {
     return (
         <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#443b34" />
+                <XAxis dataKey="date" stroke="#a8a29e" fontSize={12} />
+                <YAxis stroke="#a8a29e" fontSize={12} />
                 <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem' }}
-                    labelStyle={{ color: '#f8fafc' }}
+                    contentStyle={{ backgroundColor: '#1a1614', border: '1px solid #443b34', borderRadius: '0.5rem' }}
+                    labelStyle={{ color: '#fafaf9' }}
                     formatter={(v) => [v, marketLabel(sport, market)]}
                 />
                 {hasLine && (
                     <ReferenceLine
                         y={line}
-                        stroke="#fbbf24"
+                        stroke="#ffd23f"
                         strokeDasharray="4 3"
-                        label={{ value: `line ${line}`, fill: '#fbbf24', fontSize: 11, position: 'right' }}
+                        label={{ value: `line ${line}`, fill: '#ffd23f', fontSize: 11, position: 'right' }}
                     />
                 )}
-                <Bar dataKey="value" name={marketLabel(sport, market)} radius={[4, 4, 0, 0]} fill="#a855f7">
+                <Bar dataKey="value" name={marketLabel(sport, market)} radius={[4, 4, 0, 0]} fill="#f5a524">
                     {hasLine &&
                         chartData.map((d, i) => (
-                            <Cell key={i} fill={d.value >= line ? '#34d399' : '#64748b'} />
+                            <Cell key={i} fill={d.value >= line ? '#34d399' : '#8a7d73'} />
                         ))}
                 </Bar>
             </BarChart>

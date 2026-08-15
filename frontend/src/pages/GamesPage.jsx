@@ -58,7 +58,7 @@ export default function GamesPage() {
           <div className="mt-4 flex justify-center gap-3">
             <Link
               to={`/${sport}/explore`}
-              className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400"
+              className="rounded-lg bg-purple-500 px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-purple-400"
             >
               Explore stats
             </Link>

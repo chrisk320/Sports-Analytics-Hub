@@ -28,7 +28,7 @@ const RECAP_BY_SPORT = {
 
 const segCls = (on) =>
   `rounded-md px-3 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition ${
-    on ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
+    on ? 'bg-purple-500 text-primary-foreground' : 'text-slate-400 hover:text-slate-50'
   }`;
 
 function StatCol({ label, a, b }) {

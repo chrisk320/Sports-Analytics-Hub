@@ -72,7 +72,7 @@ const Header = ({ isLoading, user, setToken, authPrompt }) => {
                   to={sportHref(id)}
                   className={cn(
                     'rounded-md px-4 py-1.5 text-xs font-mono font-semibold uppercase tracking-wide transition',
-                    active ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-slate-50'
+                    active ? 'bg-purple-500 text-primary-foreground' : 'text-slate-400 hover:text-slate-50'
                   )}
                 >
                   {marketsFor(id).label}

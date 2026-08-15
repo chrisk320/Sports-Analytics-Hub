@@ -17,34 +17,49 @@
    button{...}) was unlayered, so it overrode Tailwind utilities — it centered/
    shrink-wrapped the app, forced purple links, and oversized headings. */
 
-/* Single dark theme, mapped 1:1 from the app's existing literal Tailwind
-   palette (slate neutrals, purple accent, rose destructive). No light/.dark
-   split — the app has no theme toggle and color-scheme is hardcoded dark. */
+/* Single dark theme — "Warm Charcoal & Gold". No light/.dark split; the app has
+   no theme toggle and color-scheme is hardcoded dark.
+
+   HOW THE RE-SKIN WORKS: the app writes literal Tailwind utilities
+   (text-slate-400, bg-purple-500, …) in ~570 places rather than semantic token
+   classes. Rather than rewrite every call site, the @theme block below
+   redefines the SCALES themselves, so the whole app follows from one place.
+   The class names therefore no longer describe their own color — `slate` is
+   the warm-charcoal neutral ramp and `purple` is the gold accent ramp. Read
+   them as ROLES, and change colors here, not at the call sites:
+
+     slate-*   neutrals: background, surfaces, borders, body/muted text
+     purple-*  brand + interactive: buttons, active tabs, focus rings, loaders
+     amber-*   the best-price / savings highlight (★ best odds, +$X/100)
+     emerald-* prices, positive EV, live indicator, a settled win
+     cyan-*    links and navigation hover
+     rose-*    destructive, remove, a settled loss
+     orange-*  warning — currently only the stale-data freshness badge */
 :root {
   color-scheme: dark;
-  --background: #020617; /* slate-950 */
-  --foreground: #f8fafc; /* slate-50 */
-  --card: #0f172a; /* slate-900 */
-  --card-foreground: #f8fafc;
-  --popover: #0f172a; /* slate-900 */
-  --popover-foreground: #f8fafc;
-  --primary: #a855f7; /* purple-500 — brighter, "Data Terminal" direction */
-  --primary-foreground: #08080a; /* near-black text on the bright primary, terminal-style inversion */
-  --secondary: #1e293b; /* slate-800 */
-  --secondary-foreground: #cbd5e1; /* slate-300 */
-  --muted: #1e293b; /* slate-800 */
-  --muted-foreground: #94a3b8; /* slate-400 */
-  --accent: #1e293b; /* slate-800 */
-  --accent-foreground: #f8fafc;
+  --background: #0c0a09;
+  --foreground: #fafaf9;
+  --card: #1a1614;
+  --card-foreground: #fafaf9;
+  --popover: #1a1614;
+  --popover-foreground: #fafaf9;
+  --primary: #f5a524; /* gold */
+  --primary-foreground: #1c1408; /* warm near-black; white on gold is ~2:1 and unreadable */
+  --secondary: #2e2723;
+  --secondary-foreground: #d6d3d1;
+  --muted: #2e2723;
+  --muted-foreground: #a8a29e;
+  --accent: #2e2723;
+  --accent-foreground: #fafaf9;
   --destructive: #e11d48; /* rose-600 */
   --destructive-foreground: #ffffff;
-  --border: #1e293b; /* slate-800 */
-  --input: #334155; /* slate-700 */
-  --ring: #a855f7; /* purple-500 */
+  --border: #2e2723;
+  --input: #443b34;
+  --ring: #f5a524;
   --radius: 0.25rem; /* sharp/precise — "Data Terminal" direction */
   --success: #34d399; /* emerald-400 */
-  --warning: #fcd34d; /* amber-300 */
-  --info: #22d3ee; /* cyan-400 — informational/structural accent, distinct from purple/emerald/amber/rose */
+  --warning: #fb923c; /* orange-400 — moved off amber, which now reads as "best price" */
+  --info: #22d3ee; /* cyan-400 */
 }
 
 html,
@@ -55,7 +70,7 @@ body,
 
 body {
   margin: 0;
-  background-color: #020617; /* slate-950 — avoids flash before React mounts */
+  background-color: #0c0a09; /* matches --background — avoids flash before React mounts */
 }
 
 /* Live ticker marquee (Home dashboard) */
@@ -73,6 +88,41 @@ body {
 }
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* --- Palette re-skin ------------------------------------------------------
+   Redefines the Tailwind scales the app already writes at its call sites. See
+   the role table above :root for what each ramp means. */
+@theme {
+  /* Neutrals — warm charcoal. Replaces slate, which is blue-tinted; every hue
+     here sits around 25–35° so the greys read warm against the gold. */
+  --color-slate-950: #0c0a09; /* page background */
+  --color-slate-900: #1a1614; /* card / panel surface */
+  --color-slate-800: #2e2723; /* borders, secondary fills */
+  --color-slate-700: #443b34; /* input borders */
+  --color-slate-600: #5f534a;
+  --color-slate-500: #8a7d73; /* de-emphasised text — 4.4:1 on the background */
+  --color-slate-400: #a8a29e; /* muted text */
+  --color-slate-300: #d6d3d1;
+  --color-slate-200: #e7e5e4;
+  --color-slate-100: #f5f5f4;
+  --color-slate-50: #fafaf9; /* primary text */
+
+  /* Brand + interactive. Orange-gold (~38°), used as SOLID fills with
+     near-black text on top. */
+  --color-purple-500: #f5a524;
+  --color-purple-400: #ffb84d; /* hover — lighter, not darker, on a dark ground */
+  --color-purple-300: #ffcb7a;
+  --color-purple-200: #ffe0ad;
+
+  /* Best-price highlight. Deliberately YELLOWER (~48°) and lighter than the
+     brand gold: the two appear in the same cards (a gold "add to slip" button
+     beside gold best-price numerals), and identical hues would make the
+     product's most important signal read as chrome. Used as text on /10
+     washes, so it separates from the solid fills by form as well as hue. */
+  --color-amber-300: #ffdf6b;
+  --color-amber-400: #ffd23f;
+  --color-amber-500: #f0b429;
 }
 
 @theme inline {
